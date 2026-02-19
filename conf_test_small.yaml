@@ -1,0 +1,76 @@
+experiment:
+  project_name: test_small
+  annotation_file: conf_test_small_annotations.csv
+  balancing: slide               # 'category' falla con pocos slides (categorías vacías en fold)
+  class_weighting: True
+  split_technique: k-fold
+  k: 2                           # 2 folds (mínimo viable con pocos slides)
+  val_fraction: 0.1
+  best_epoch_based_on: val_loss
+  epochs: 5                      # Reducido para prueba rápida
+  batch_size: 2                  # k=2 → ~3 slides/fold de entrenamiento; batch_size debe ser < n_slides
+  bag_size: 128                  # Reducido (default: 512)
+  encoder_layers: 1
+  z_dim: 256
+  dropout_p: 0.1
+  num_workers: 0                 # Sin paralelismo para evitar problemas en pruebas
+  aggregation_level: slide
+  task: classification
+  mode: benchmark
+  custom_metrics: [RocAuc]
+  report: False
+  skip_extracted: True           # Reutiliza tiles si ya existen
+  skip_feature_extraction: True  # Reutiliza features si ya existen
+  mixed_precision: True
+  save_heatmaps_test: False      # Desactivado para más velocidad
+
+  experiment_label: test_small_run
+
+  qc:
+    - GaussianV2
+    - Otsu-CLAHE
+
+  qc_filters:
+    grayspace_threshold: 0.05
+    grayspace_fraction: 0.6
+    whitespace_threshold: 230
+    whitespace_fraction: 1.0
+
+  evaluation:
+    - balanced_accuracy
+
+  visualization:
+    - confusion_matrix
+
+datasets:
+  - name: tcga
+    slide_path: /media/jorge/investigacion/datos/wsi/tcga
+    tfrecord_path: experiments/test_small/tfrecords/tcga
+    tile_path: experiments/test_small/tiles/tcga
+    used_for: training
+
+  - name: cptac
+    slide_path: /media/jorge/investigacion/datos/wsi/cptac
+    tfrecord_path: experiments/test_small/tfrecords/cptac
+    tile_path: experiments/test_small/tiles/cptac
+    used_for: testing
+
+benchmark_parameters:
+  tile_px:
+    - 256
+  tile_um:
+    - 128  # 128 microns ≡ 20x para slides de 0.25 MPP (40x); evita buscar nivel piramidal nativo
+  normalization:
+    - macenko
+  feature_extraction:
+    - resnet50_imagenet  # No requiere descarga, usa torchvision
+  mil:
+    - attention_mil      # Modelo simple y robusto
+  loss:
+    - CrossEntropyLoss
+  activation_function:
+    - ReLU
+  optimizer:
+    - Adam
+
+weights_dir: ./pretrained_weights
