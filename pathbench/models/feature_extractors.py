@@ -1520,10 +1520,9 @@ class virchow2(TorchFeatureExtractor):
         super().__init__(**kwargs)
         local_dir = WEIGHTS_DIR
         
-        # Create the model without auto-loading pretrained weights.
         base_model = timm.create_model(
             "hf-hub:paige-ai/Virchow2",
-            pretrained=False,  # disable auto-loading
+            pretrained=True,
             mlp_layer=SwiGLUPacked,
             act_layer=nn.SiLU,
         )

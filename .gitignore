@@ -10,3 +10,4 @@ pretrained_weights/*
 experiments/
 .cache/
 pathbench_env/*
+build/*

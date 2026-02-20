@@ -44,13 +44,13 @@ experiment:
 
 datasets:
   - name: tcga
-    slide_path: /media/jorge/investigacion/datos/wsi/tcga
+    slide_path: /media/jorge/BigTwo/cluster/datos/TCGA-BRCA
     tfrecord_path: experiments/test_small/tfrecords/tcga
     tile_path: experiments/test_small/tiles/tcga
     used_for: training
 
   - name: cptac
-    slide_path: /media/jorge/investigacion/datos/wsi/cptac
+    slide_path: /media/jorge/BigOne/medicina/patologia_digital/datos/BRCA
     tfrecord_path: experiments/test_small/tfrecords/cptac
     tile_path: experiments/test_small/tiles/cptac
     used_for: testing

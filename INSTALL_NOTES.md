@@ -347,3 +347,134 @@ lifelines: 0.29.0
 libvips: 8.12.1
 pathbench:  OK
 ```
+
+---
+
+## Parte VII — Estado del entorno (2026-02-19) y restauración necesaria
+
+### Estado actual detectado
+
+Al revisar el entorno en esta fecha se encontró que `pathbench_env` está
+**casi vacío** — solo contiene las herramientas base de pip:
+
+```
+Package    Version
+---------- -------
+packaging  26.0
+pip        26.0.1
+setuptools 59.6.0
+versioneer 0.29
+wheel      0.46.3
+```
+
+Las causas identificadas:
+
+1. **El archivo `.pth` que redirigía a torch de `clam_latest` ha desaparecido.**
+   El fichero `pathbench_env/lib/python3.10/site-packages/clam_torch.pth`
+   fue el mecanismo documentado en Parte I para reutilizar PyTorch sin
+   descargarlo; ya no existe.
+
+2. **La ruta del entorno conda ha cambiado.**
+   El entorno `clam_latest` estaba documentado en
+   `/home/jorge/anaconda3/envs/clam_latest` pero anaconda fue sustituido por
+   **miniforge3**. La ruta correcta ahora es:
+
+   ```
+   /home/jorge/miniforge3/envs/clam_latest
+   ```
+
+3. **La versión de torch en `clam_latest` también cambió.**
+   Versión documentada: `2.9.0+cu128`
+   Versión actual: `2.6.0+cu124`
+   Python: 3.10.0 (compatible con `pathbench_env`)
+
+### Pasos para restaurar el entorno
+
+Ejecutar con el entorno virtual activo:
+
+```bash
+source /media/jorge/hd1/patologia_digital/software/PathBench-MIL/pathbench_env/bin/activate
+```
+
+**Paso 1 — Recrear el enlace `.pth` a torch (nueva ruta)**
+
+```bash
+echo "/home/jorge/miniforge3/envs/clam_latest/lib/python3.10/site-packages" \
+  > pathbench_env/lib/python3.10/site-packages/clam_torch.pth
+```
+
+Verificar:
+
+```bash
+python3 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+# Esperado: 2.6.0+cu124  True
+```
+
+**Paso 2 — Reinstalar todos los paquetes desde requirements.txt**
+
+El método más fiable es instalar directamente desde `requirements.txt` y luego
+aplicar las correcciones de versión necesarias:
+
+```bash
+# Instalar todos los paquetes (tarda varios minutos; incluye torch, gigapath, etc.)
+pip install -r requirements.txt
+
+# Correcciones de versión obligatorias (sobreescriben las del requirements.txt)
+pip install "lifelines>=0.29.0,<0.30" "seaborn>=0.13" exceptiongroup --no-deps
+
+# Eliminar torch del venv — se debe usar el de clam_latest via .pth
+# (torch 2.2.2 de PyPI falla al cargar libnvJitLink.so.12 en CUDA 12.8)
+pip uninstall torch torchvision triton -y
+```
+
+> **Nota importante sobre torch:** al instalar desde requirements.txt, pip
+> descarga `torch==2.2.2` que falla con `libnvJitLink.so.12: not found` en
+> CUDA 12.8. La solución es desinstalarlo inmediatamente después y dejar que
+> el `.pth` exponga el `torch 2.6.0+cu124` de `clam_latest`, que sí funciona.
+
+**Paso 3 — Reinstalar slideflow fork y pathbench** (usan versioneer, requieren
+`--no-build-isolation`):
+
+```bash
+pip install /media/jorge/hd1/patologia_digital/software/PathBench-MIL/slideflow_fork \
+  --no-deps --no-build-isolation
+pip install /media/jorge/hd1/patologia_digital/software/PathBench-MIL \
+  --no-deps --no-build-isolation
+```
+
+**Paso 4 — Verificar estado completo**
+
+```bash
+python3 -c "
+import torch, fastai, optuna, lifelines, pyvips, pathbench, slideflow
+print('torch:',     torch.__version__, '| CUDA:', torch.cuda.is_available())
+print('fastai:',    fastai.__version__)
+print('optuna:',    optuna.__version__)
+print('lifelines:', lifelines.__version__)
+print('pyvips:',    pyvips.__version__, '| libvips:', pyvips.version(0), pyvips.version(1), pyvips.version(2))
+print('pathbench:  OK')
+print('slideflow:', slideflow.__version__)
+"
+```
+
+> **Nota:** en pyvips 2.2.2 la función es `pyvips.version(n)`, no
+> `pyvips.version_string()` (que existía en pyvips 3.x).
+
+Salida esperada:
+
+```
+torch: 2.6.0+cu124 | CUDA: True
+fastai: 2.7.14
+optuna: 3.6.1
+lifelines: 0.29.0
+pyvips: 2.2.2 | libvips: 8 12 1
+pathbench:  OK
+slideflow: 0+unknown
+```
+
+### Nota sobre compatibilidad torch 2.6.0 vs 2.9.0
+
+La versión 2.6.0+cu124 de torch (disponible en `clam_latest`) es compatible
+con pytorch-lightning 2.2.2 y con todos los feature extractors soportados.
+La única diferencia respecto a la versión anterior (2.9.0+cu128) es el nivel
+de CUDA: 12.4 vs 12.8 — ambos funcionan en el hardware RTX 3070 Ti.
