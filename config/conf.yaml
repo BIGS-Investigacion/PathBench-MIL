@@ -6,7 +6,7 @@ experiment:
   split_technique: k-fold
   k: 3
   val_fraction: 0.1
-  best_epoch_based_on: roc_auc_score
+  best_epoch_based_on: val_loss
   epochs: 5
   batch_size: 32
   bag_size: 512
@@ -17,8 +17,9 @@ experiment:
   aggregation_level: slide
   task: classification
   mode: benchmark
-  custom_metrics: [RocAuc]
+  custom_metrics: []
   report: False
+  save_heatmaps_val: True
 
   multiprocessing_context: fork
   persistent_workers: True

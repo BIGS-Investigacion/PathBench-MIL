@@ -752,6 +752,10 @@ def plot_top5_attended_tiles_per_class(slide_name : str, attention_file : str, t
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
+    # Subdirectory for individual tile JPGs
+    tiles_dir = os.path.join(output_dir, "tiles")
+    os.makedirs(tiles_dir, exist_ok=True)
+
     # Plot the top 5 most attended tiles with attention scores
     fig, axs = plt.subplots(1, 5, figsize=(20, 5))
     for i, coord in enumerate(top5_tile_coordinates):
@@ -762,9 +766,13 @@ def plot_top5_attended_tiles_per_class(slide_name : str, attention_file : str, t
             img = img.cpu().numpy()  # No permutation needed, assuming the shape is already [256, 256, 3]
 
         # Convert to image (RGB assumed)
-        img = Image.fromarray(img.astype(np.uint8))  # Convert directly to image
+        img = Image.fromarray(img.astype(np.uint8))
 
-        # Add attention score text to image
+        # Save individual tile as JPG (clean, without overlay)
+        tile_path = os.path.join(tiles_dir, f"{dataset}_{split}_{label}_{slide_name}_{save_string}_top{i+1}_score{attention[top5_attention_indices[i]]:.4f}.jpg")
+        img.save(tile_path, format="JPEG", quality=95)
+
+        # Add attention score text to image for composite figure
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
         draw.text((10, 10), f"Score: {attention[top5_attention_indices[i]]:.4f}", fill="black", font=font)
@@ -782,15 +790,18 @@ def plot_top5_attended_tiles_per_class(slide_name : str, attention_file : str, t
     for i, coord in enumerate(top5_least_attended_coordinates):
         slide, img = tfr.get_record_by_xy(coord[0], coord[1], decode=True)
 
-
         # Convert from Tensor to NumPy array if necessary
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()  # No permutation needed, assuming the shape is already [256, 256, 3]
 
         # Convert to image (RGB assumed)
-        img = Image.fromarray(img.astype(np.uint8))  # Convert directly to image
+        img = Image.fromarray(img.astype(np.uint8))
 
-        # Add attention score text to image
+        # Save individual tile as JPG (clean, without overlay)
+        tile_path = os.path.join(tiles_dir, f"{dataset}_{split}_{label}_{slide_name}_{save_string}_least{i+1}_score{attention[top5_least_attended_indices[i]]:.4f}.jpg")
+        img.save(tile_path, format="JPEG", quality=95)
+
+        # Add attention score text to image for composite figure
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
         draw.text((10, 10), f"Score: {attention[top5_least_attended_indices[i]]:.4f}", fill="red", font=font)
