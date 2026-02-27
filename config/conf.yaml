@@ -3,7 +3,7 @@ experiment:
   annotation_file: ./config/annotations/annotation_file.csv
   balancing: category
   class_weighting: True
-  split_technique: k-fold
+  split_technique: fixed
   k: 3
   val_fraction: 0.1
   best_epoch_based_on: val_loss
@@ -20,6 +20,8 @@ experiment:
   custom_metrics: []
   report: False
   save_heatmaps_val: True
+  skip_extracted: True           # Reutiliza tiles si ya existen
+  skip_feature_extraction: True  # Reutiliza features si ya existen
 
   multiprocessing_context: fork
   persistent_workers: True

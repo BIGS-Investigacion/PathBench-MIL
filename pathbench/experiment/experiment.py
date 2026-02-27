@@ -76,8 +76,14 @@ class Experiment():
     """
     def __init__(self, config_file : str):
         self.config = read_config(config_file)
+        self.config_file = config_file
         logging.info(f"Configuration file {config_file} loaded")
         self.load_datasets()
+        # Save a copy of the config file in the experiment directory for reproducibility
+        project_dir = f"experiments/{self.config['experiment']['project_name']}"
+        dest = os.path.join(project_dir, os.path.basename(config_file))
+        shutil.copy(config_file, dest)
+        logging.info(f"Config saved to {dest}")
         #Set Hugging Face token
         if 'hf_key' in self.config:
             if self.config['hf_key'] is not None:

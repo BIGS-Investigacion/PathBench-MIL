@@ -13,3 +13,4 @@ pathbench_env/*
 pathomil/*
 build/*
 slurm/*
+config/*

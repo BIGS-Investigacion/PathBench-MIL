@@ -972,7 +972,10 @@ def generate_bags(config: dict, project: sf.Project, all_data: sf.Dataset,
     Returns:
         str: The directory path where bags are saved.
     """
-    outdir = f"experiments/{config['experiment']['project_name']}/bags"
+    if config['experiment'].get('bags_path'):
+        outdir = config['experiment']['bags_path']
+    else:
+        outdir = f"experiments/{config['experiment']['project_name']}/bags"
     os.makedirs(outdir, exist_ok=True)
     bags_dir = f"{outdir}/{string_without_mil}"
 
@@ -983,7 +986,7 @@ def generate_bags(config: dict, project: sf.Project, all_data: sf.Dataset,
     logging.info(f"Number of GPUs available for feature extraction: {num_gpus}")
 
     #Check if on server environment
-    if "SLURM_JOB_ID" in os.environ:
+    if False and "SLURM_JOB_ID" in os.environ:
         logging.info("Running on a SLURM server environment, removing torch/huggingface cache to avoid full cache errors.")
         remove_cache()
 
@@ -1508,10 +1511,20 @@ def calculate_results(result: pd.DataFrame, config: dict, save_string: str, data
         all_y_pred_class = np.argmax(all_y_pred_prob, axis=1)
         all_cm = confusion_matrix(all_y_true, all_y_pred_class, labels=unique_classes)
         if 'confusion_matrix' in config['experiment'].get('visualization', []):
-            disp = ConfusionMatrixDisplay(confusion_matrix=all_cm, display_labels=unique_classes)
-            disp.plot(cmap=plt.cm.Blues)
-            plt.title('Overall Confusion Matrix')
-            plt.savefig(f"{save_path}/confusion_matrix_{save_string}_overall.png")
+            # Map integer labels to category names (sorted alphabetically as slideflow encodes them)
+            try:
+                ann_df = pd.read_csv(config['experiment']['annotation_file'])
+                cat_col = 'category' if 'category' in ann_df.columns else ann_df.columns[-1]
+                class_names = sorted(ann_df[cat_col].dropna().unique())
+                display_labels = [class_names[i] for i in unique_classes if i < len(class_names)]
+            except Exception:
+                display_labels = unique_classes
+            disp = ConfusionMatrixDisplay(confusion_matrix=all_cm, display_labels=display_labels)
+            fig, ax = plt.subplots(figsize=(8, 7))
+            disp.plot(cmap=plt.cm.Blues, ax=ax)
+            plt.title(f'Overall Confusion Matrix ({dataset_type})')
+            plt.tight_layout()
+            plt.savefig(f"{save_path}/confusion_matrix_{save_string}_{dataset_type}_overall.png")
             plt.close()
 
         y_true_binary = np.isin(all_y_true, unique_classes[unique_classes != unique_classes[-1]]).astype(int)

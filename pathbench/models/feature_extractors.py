@@ -1516,17 +1516,17 @@ class virchow2(TorchFeatureExtractor):
     """
     tag = 'virchow2'
 
-    def __init__(self, tile_px=256, **kwargs):
+    def __init__(self, tile_px=256, device=None, **kwargs):
         super().__init__(**kwargs)
         local_dir = WEIGHTS_DIR
-        
+
         base_model = timm.create_model(
             "hf-hub:paige-ai/Virchow2",
             pretrained=True,
             mlp_layer=SwiGLUPacked,
             act_layer=nn.SiLU,
         )
-    
+
         # Determine the mode (default "full").
         mode = kwargs.get('mode', "full")
         
@@ -1537,7 +1537,7 @@ class virchow2(TorchFeatureExtractor):
             """
             def __init__(self):
                 super(VirchowEmbedder, self).__init__()
-                self.base_model = base_model.cuda()
+                self.base_model = base_model
 
             def forward(self, x):
                 x = self.base_model(x)
@@ -1550,6 +1550,7 @@ class virchow2(TorchFeatureExtractor):
                     embedding = cls_token
                 return embedding
 
+        _device = device if device is not None else 'cuda'
         self.model = VirchowEmbedder()
         self.transform = transforms.Compose(
             [
@@ -1558,7 +1559,7 @@ class virchow2(TorchFeatureExtractor):
                 transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ]
         )
-        self.model.to('cuda')
+        self.model.to(_device)
         self.num_features = 2560
         self.model.eval()
         self.preprocess_kwargs = {'standardize': False}
@@ -2595,8 +2596,11 @@ Slide-level feature extractors
 """
 class SlideFeatureExtractor(TorchFeatureExtractor):
     def __init__(self, tile_px: int = 224, **kwargs):
+        device = kwargs.pop('device', None)
         super().__init__(**kwargs)
         self.tile_px = tile_px
+        if device is not None:
+            self.device = torch.device(device)
 
     def build_encoders(self):
         self.tile_encoder = None
@@ -2669,8 +2673,8 @@ class gigapath_slide(SlideFeatureExtractor):
 
     def dump_config(self):
         return {
-            'class': 'ProvGigaPathSlide',
-            'kwargs': {}
+            'class': 'pathbench.models.feature_extractors.gigapath_slide',
+            'kwargs': {'tile_px': self.tile_px}
         }
 
 @register_torch
@@ -2698,22 +2702,21 @@ class titan_slide(SlideFeatureExtractor):
         self.preprocess_kwargs = {'standardize': False}
 
     def build_encoders(self):
+        device = getattr(self, 'device', torch.device('cuda'))
         self.slide_encoder = AutoModel.from_pretrained(
             "MahmoodLab/TITAN", trust_remote_code=True
         )
-        self.slide_encoder.to('cuda')
+        self.slide_encoder.to(device)
         self.slide_encoder.eval()
 
         self.tile_encoder, self.eval_transform = self.slide_encoder.return_conch()
-        self.tile_encoder.to('cuda')
+        self.tile_encoder.to(device)
         self.tile_encoder.eval()
-        
-        #Add transform to 
-        self.eval_transform
 
     def forward_slide(self, tile_features, tile_coordinates, **kwargs):
-        tile_features = tile_features.unsqueeze(0)
-        tile_coordinates = tile_coordinates.unsqueeze(0)
+        device = getattr(self, 'device', next(self.slide_encoder.parameters()).device)
+        tile_features = tile_features.unsqueeze(0).to(device)
+        tile_coordinates = tile_coordinates.unsqueeze(0).to(device)
         output = self.slide_encoder.encode_slide_from_patch_features(
             tile_features, tile_coordinates, self.tile_px
         )
@@ -2724,8 +2727,8 @@ class titan_slide(SlideFeatureExtractor):
 
     def dump_config(self):
         return {
-            'class': 'TITAN',
-            'kwargs': {}
+            'class': 'pathbench.models.feature_extractors.titan_slide',
+            'kwargs': {'tile_px': self.tile_px}
         }
 
 @register_torch
@@ -2769,6 +2772,6 @@ class prism_slide(SlideFeatureExtractor):
 
     def dump_config(self):
         return {
-            'class': 'PRISM',
-            'kwargs': {}
+            'class': 'pathbench.models.feature_extractors.prism_slide',
+            'kwargs': {'tile_px': self.tile_px}
         }
