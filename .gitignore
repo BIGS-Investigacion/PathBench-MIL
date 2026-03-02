@@ -12,5 +12,5 @@ experiments/
 pathbench_env/*
 pathomil/*
 build/*
-slurm/*
+slurm_logs/*
 config/*
