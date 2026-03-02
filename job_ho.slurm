@@ -8,11 +8,11 @@
 #SBATCH --time=00:00:00                               # max time
 #SBATCH --output=slurm/%j.out
 #SBATCH --error=slurm/%j.err
-
 mkdir -p slurm
 
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-
 source /etc/profile
+source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
+
+cd /shared/home/jorgarcia/PathBench-MIL
 
 ./run_pathbench.sh ./config/conf_brca_pam50_virchow2_test.yaml
