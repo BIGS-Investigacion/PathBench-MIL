@@ -4,17 +4,16 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --gpus=a30:1
+#SBATCH --gpus=a100:1
 #SBATCH --time=00:00:00
-#SBATCH --output=slurm/%j.out
-#SBATCH --error=slurm/%j.err
-
-mkdir -p slurm
+#SBATCH --output=slurm_logs/%j.out
+#SBATCH --error=slurm_logs/%j.err
 
 source /etc/profile
 source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
 
 cd /shared/home/jorgarcia/PathBench-MIL
+mkdir -p slurm_logs 
 
 python scripts/centroid_distance.py \
     --model_dir experiments/brca_pam50_virchow2_ho_tcga_tcga/mil/00000-256_128_macenko_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_AdamW_1 \

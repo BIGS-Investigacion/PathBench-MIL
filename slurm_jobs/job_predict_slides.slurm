@@ -5,18 +5,15 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --gpus=a100:1
-#SBATCH --time=02:00:00
-#SBATCH --output=slurm/%j.out
-#SBATCH --error=slurm/%j.err
-
-mkdir -p slurm
-
-export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-export SF_SLIDE_BACKEND=cucim
-export SF_BACKEND=torch
+#SBATCH --time=00:00:00
+#SBATCH --output=slurm_logs/%j.out
+#SBATCH --error=slurm_logs/%j.err
 
 source /etc/profile
 source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
+
+cd /shared/home/jorgarcia/PathBench-MIL
+mkdir -p slurm_logs 
 
 python scripts/predict_slides.py \
     --model_dir /home/jorgarcia/PathBench-MIL/experiments/brca_pam50_virchow2_ho/mil/00004-256_128_none_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_AdamW_1 \
