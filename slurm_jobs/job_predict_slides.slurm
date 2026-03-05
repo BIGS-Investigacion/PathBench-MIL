@@ -16,7 +16,7 @@ cd /shared/home/jorgarcia/PathBench-MIL
 mkdir -p slurm_logs 
 
 python scripts/predict_slides.py \
-    --model_dir /home/jorgarcia/PathBench-MIL/experiments/brca_pam50_virchow2_ho/mil/00004-256_128_none_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_AdamW_1 \
+    --model_dir /home/jorgarcia/PathBench-MIL/experiments/brca_pam50_virchow2_ho_category/mil/00000-256_128_none_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_Adam_1 \
     --config config/conf_brca_pam50_virchow2_test.yaml \
     --bags_dir /home/PARADIS/mama/tfrecords/shared_bags/256_128_none_virchow2 \
     --annotations config/annotations/annotations_brca_pam50.csv \

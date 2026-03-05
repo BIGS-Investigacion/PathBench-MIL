@@ -1,0 +1,13 @@
+task,mil,metric,best_value,z_dim,dropout_p,tile_px,tile_um,normalization,feature_extraction,loss,augmentation,activation_function,optimizer,annotation_file,trial_number
+PAM50,transmil,mean_f1,0.5691,472,0.5974,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pam50.csv,41
+PAM50,clam_mil_mb,mean_f1,0.5614,255,0.5489,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pam50.csv,15
+PAM50,dsmil,mean_f1,0.5314,311,0.6312,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pam50.csv,10
+ER,transmil,mean_average_precision,0.8659,499,0.5651,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_er.csv,18
+ER,clam_mil_mb,mean_average_precision,0.8656,233,0.737,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_er.csv,41
+ER,dsmil,mean_average_precision,0.8325,57,0.747,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_er.csv,6
+ERBB2,transmil,mean_average_precision,0.664,325,0.5338,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_erbb2.csv,2
+ERBB2,clam_mil_mb,mean_average_precision,0.6623,317,0.7555,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_erbb2.csv,47
+ERBB2,dsmil,mean_average_precision,0.6641,121,0.514,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_erbb2.csv,18
+PR,transmil,mean_average_precision,0.8256,439,0.6523,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pr.csv,39
+PR,clam_mil_mb,mean_average_precision,0.8211,33,0.5429,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pr.csv,24
+PR,dsmil,mean_average_precision,0.8262,329,0.4753,256,128,none,virchow2,CrossEntropyLoss,,ReLU,Adam,annotations_brca_pr.csv,21

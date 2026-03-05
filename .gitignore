@@ -4,6 +4,7 @@ __pycache__/
 *.log
 *.pth
 *.bin
+*.err
 *.safetensors
 pretrained_weights/*
 !pretrained_weights/readme.txt
@@ -12,5 +13,6 @@ experiments/
 pathbench_env/*
 pathomil/*
 build/*
-slurm_logs/*
 config/*
+slurm_logs/*
+results/*

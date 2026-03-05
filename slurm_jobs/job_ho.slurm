@@ -6,8 +6,8 @@
 #SBATCH --mem=32G                                     # total memory per node (30 training runs, 3 MIL x 10 folds)
 #SBATCH --gpus=a100:1                                  # gpus per node (a40 sufficient for MIL training)
 #SBATCH --time=00:00:00                               # max time
-#SBATCH --output=slurm/%j.out
-#SBATCH --error=slurm/%j.err
+#SBATCH --output=slurm_logs/%j.out
+#SBATCH --error=slurm_logs/%j.err
 source /etc/profile
 source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
 
