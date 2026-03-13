@@ -14,4 +14,4 @@ source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
 cd /shared/home/jorgarcia/PathBench-MIL
 mkdir -p slurm_logs 
 
-./run_pathbench.sh ./config/conf_brca_pam50_virchow2_test.yaml
+./run_pathbench.sh ./config/conf_brca_virchow2_test.yaml

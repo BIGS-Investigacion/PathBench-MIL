@@ -32,6 +32,11 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Modelos que slideflow implementa de forma nativa (no en aggregators.py)
+_SLIDEFLOW_MIL_FILES = {
+    'transmil': os.path.join(ROOT, 'slideflow_fork', 'slideflow', 'mil', 'models', 'transmil.py'),
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Predicciones MIL desde bags (.pt) → CSV")
@@ -49,14 +54,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def load_aggregators_module():
-    """Importa aggregators.py directamente por path, sin tocar pathbench/__init__.py."""
-    agg_path = os.path.join(ROOT, 'pathbench', 'models', 'aggregators.py')
-    spec = importlib.util.spec_from_file_location('aggregators', agg_path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
 
 def find_checkpoint(model_dir: str) -> str:
     """Busca el fichero .ckpt del mejor epoch en el directorio del modelo."""
@@ -67,13 +64,33 @@ def find_checkpoint(model_dir: str) -> str:
     return sorted(ckpts)[-1]
 
 
-def load_model(model_dir: str, aggregators_module):
+def _load_module_from_file(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _get_model_cls(model_name: str):
+    """Resuelve la clase del modelo sin triggear imports circulares."""
+    key = model_name.lower()
+    if key in _SLIDEFLOW_MIL_FILES:
+        mod = _load_module_from_file(f'sf_mil_{key}', _SLIDEFLOW_MIL_FILES[key])
+        # El nombre de clase en slideflow es CamelCase (ej. transmil → TransMIL)
+        class_name = {'transmil': 'TransMIL'}.get(key, model_name)
+        return getattr(mod, class_name)
+    agg = _load_module_from_file('aggregators',
+                                 os.path.join(ROOT, 'pathbench', 'models', 'aggregators.py'))
+    return getattr(agg, model_name)
+
+
+def load_model(model_dir: str):
     """Construye el modelo desde mil_params.json y carga los pesos del checkpoint."""
     with open(os.path.join(model_dir, 'mil_params.json')) as f:
         mil_params = json.load(f)
 
     params = mil_params['params']
-    model_cls = getattr(aggregators_module, params['model'])
+    model_cls = _get_model_cls(params['model'])
     model = model_cls(
         n_feats=mil_params['input_shape'],
         n_out=mil_params['output_shape'],
@@ -151,8 +168,7 @@ def main():
     for var in ('TORCH_HOME', 'HF_HOME', 'XDG_CACHE_HOME', 'HF_DATASETS_CACHE', 'WEIGHTS_DIR'):
         os.environ[var] = weights_dir
 
-    aggregators = load_aggregators_module()
-    model, mil_params = load_model(args.model_dir, aggregators)
+    model, mil_params = load_model(args.model_dir)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device).eval()
@@ -198,7 +214,7 @@ def main():
 
 
 def print_confusion_matrices(df: pd.DataFrame, annotations_path: str, outcome_labels: dict):
-    from sklearn.metrics import confusion_matrix, classification_report
+    from sklearn.metrics import confusion_matrix, classification_report, average_precision_score
 
     annot = pd.read_csv(annotations_path)
     merged = df.merge(annot[['slide', 'dataset', 'category']], on='slide', how='inner')
@@ -206,12 +222,18 @@ def print_confusion_matrices(df: pd.DataFrame, annotations_path: str, outcome_la
     n_classes = len(outcome_labels)
     labels = list(range(n_classes))
     class_names = [f"{outcome_labels.get(str(i), str(i))}({i})" for i in labels]
+    prob_cols = [f'y_pred{i}' for i in labels]
 
     datasets = sorted(merged['dataset'].unique())
     for ds in datasets:
         sub = merged[merged['dataset'] == ds]
-        y_true = sub['category'].values
-        y_pred = sub['y_pred_class'].values
+        mask = sub['category'].isin(labels)
+        if not mask.all():
+            n_dropped = (~mask).sum()
+            logging.warning(f"  [{ds}] {n_dropped} slides con categoria fuera de {labels} — excluidos de métricas")
+            sub = sub[mask]
+        y_true = sub['category'].values.astype(int)
+        y_pred = sub['y_pred_class'].values.astype(int)
 
         cm = confusion_matrix(y_true, y_pred, labels=labels)
         cm_df = pd.DataFrame(cm, index=class_names, columns=class_names)
@@ -229,6 +251,18 @@ def print_confusion_matrices(df: pd.DataFrame, annotations_path: str, outcome_la
         print("\nClassification Report:")
         print(classification_report(y_true, y_pred, labels=labels,
                                     target_names=class_names, digits=3, zero_division=0))
+
+        if all(c in sub.columns for c in prob_cols):
+            y_probs = sub[prob_cols].values
+            ap_per_class = [
+                average_precision_score((y_true == i).astype(int), y_probs[:, i])
+                for i in labels
+            ]
+            macro_ap = float(np.mean(ap_per_class))
+            print("PR-AUC por clase:")
+            for i, ap in enumerate(ap_per_class):
+                print(f"  {class_names[i]}: {ap:.3f}")
+            print(f"PR-AUC macro: {macro_ap:.3f}")
 
 
 if __name__ == '__main__':
