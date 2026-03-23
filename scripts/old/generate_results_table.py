@@ -213,13 +213,13 @@ def generate_latex(rows: list) -> str:
         r'PR-AUC is reported for binary tasks (ER, HER2, PR) and F1 for PAM50. '
         r'\textbf{none}: PR-AUC or F1 on CPTAC without stain normalisation. '
         r'\textbf{macenko}: same metric with Macenko stain normalisation. '
-        r'$\delta_n = \text{macenko} - \text{none}$ on CPTAC.}'
+        r'$\Delta n = \text{macenko} - \text{none}$ on CPTAC.}'
     )
     buf.append(r'\label{tab:results_summary}')
     buf.append(r'\begin{tabular}{lllrrr}')
     buf.append(r'\toprule')
     buf.append(r'\textbf{MIL} & \textbf{Task} & \textbf{Class} '
-               r'& \textbf{none} & \textbf{macenko} & $\delta_n$ \\')
+               r'& \textbf{none} & \textbf{macenko} & $\Delta n$ \\')
     buf.append(r'\midrule')
 
     for mil_idx, mil in enumerate(MIL_ORDER):
@@ -266,11 +266,11 @@ def generate_latex(rows: list) -> str:
     return '\n'.join(buf)
 
 
-# ── Análisis univariante RPD ~ δn ────────────────────────────────────────────
+# ── Análisis univariante RPD ~ Δn ────────────────────────────────────────────
 
 def univariate_analysis(rows: list) -> None:
     """
-    Regresión lineal simple OLS:  RPD = β0 + β1·δn + ε
+    Regresión lineal simple OLS:  RPD = β0 + β1·Δn + ε
 
     Se excluyen filas con RPD = NaN o RPD = 1.0 exacto
     (colapso total, p.ej. Her2 en CPTAC con F1=0 para todos los modelos).
@@ -332,7 +332,7 @@ def univariate_analysis(rows: list) -> None:
     # ── Impresión ─────────────────────────────────────────────────────────
     sep = '─' * 60
     print(sep)
-    print('ANÁLISIS UNIVARIANTE:  RPD ~ δn')
+    print('ANÁLISIS UNIVARIANTE:  RPD ~ Δn')
     print(sep)
     print(f'  N (filas válidas)    : {n}  '
           f'(excluidas por NaN: {len(rows) - n})')
@@ -361,14 +361,14 @@ def univariate_analysis(rows: list) -> None:
     print('  Interpretación:')
     if sig:
         print(f'    Relación significativa (p={p_value:.3e}).')
-        print(f'    Pendiente {direction}: mayor δn → '
+        print(f'    Pendiente {direction}: mayor Δn → '
               + ('menor' if slope < 0 else 'mayor') + ' RPD.')
-        print(f'    δn explica el {r2 * 100:.1f}% de la varianza en RPD (R²).')
+        print(f'    Δn explica el {r2 * 100:.1f}% de la varianza en RPD (R²).')
         print(f'    Tamaño del efecto: r={r_pearson:+.3f} ({_label_r(r_pearson)}), '
               f'f²={f2:.3f} ({_label_f2(f2)}).')
     else:
         print(f'    Relación NO significativa (p={p_value:.3e}, α=0.05).')
-        print(f'    δn no predice linealmente el RPD en esta muestra.')
+        print(f'    Δn no predice linealmente el RPD en esta muestra.')
     print(sep)
     print()
 
@@ -748,6 +748,66 @@ def generate_centroid_latex() -> str:
 
 
 
+def generate_performance_per_mil_latex(rows: list) -> str:
+    """Tabla de rendimiento por modelo MIL (TCGA / CPTAC / RPD)."""
+    METRIC_LABEL = {'ER': 'PR-AUC', 'ERBB2': 'PR-AUC', 'PR': 'PR-AUC', 'PAM50': 'F1'}
+    MIL_DISP = {'clam_mil_mb': 'CLAM-MB', 'dsmil': 'DSMIL', 'transmil': 'TransMIL'}
+
+    from collections import defaultdict as _dd
+    mil_task = _dd(lambda: _dd(list))
+    for r in rows:
+        mil_task[r['mil']][r['task']].append(r)
+    for mil in mil_task:
+        for task in mil_task[mil]:
+            mil_task[mil][task].sort(key=lambda r: r['cls_id'])
+
+    buf = []
+    buf.append(r'\begin{table}[ht]')
+    buf.append(r'\centering')
+    buf.append(
+        r'\caption{Performance per MIL aggregator. '
+        r'TCGA: MCCV score (train/val, no stain normalisation); '
+        r'CPTAC: hold-out external test score (no stain normalisation). '
+        r'RPD: relative performance drop.}'
+    )
+    buf.append(r'\label{tab:performance_per_mil}')
+    buf.append(r'\begin{tabular}{lllcrrr}')
+    buf.append(r'\toprule')
+    buf.append(r'\textbf{MIL} & \textbf{Task} & \textbf{Class} & \textbf{Metric} '
+               r'& \textbf{TCGA} & \textbf{CPTAC} & \textbf{RPD} \\')
+    buf.append(r'\midrule')
+
+    for mil_idx, mil in enumerate(MIL_ORDER):
+        task_dict = mil_task[mil]
+        mil_disp  = MIL_DISP.get(mil, mil)
+        n_mil     = sum(len(v) for v in task_dict.values())
+        first_mil = True
+        for task in [t.upper() for t in TASK_ORDER]:
+            task_rows = task_dict.get(task, [])
+            if not task_rows:
+                continue
+            metric = METRIC_LABEL[task]
+            n_task = len(task_rows)
+            for i, r in enumerate(task_rows):
+                mil_col   = f'\\multirow{{{n_mil}}}{{*}}{{{mil_disp}}}' if first_mil else ''
+                task_col  = f'\\multirow{{{n_task}}}{{*}}{{{TASK_DISPLAY.get(task, task)}}}' if i == 0 else ''
+                met_col   = f'\\multirow{{{n_task}}}{{*}}{{{metric}}}' if i == 0 else ''
+                tcga_val  = f"{r['none_tcga']:.3f}"
+                cptac_val = f"{r['none_cptac']:.3f}"
+                rpd_str   = '---' if np.isnan(r['rpd']) else f"${r['rpd']:+.3f}$"
+                cls_name_ = r['cls_name']
+                buf.append(f'  {mil_col} & {task_col} & {cls_name_} & {met_col} '
+                           f'& {tcga_val} & {cptac_val} & {rpd_str} \\\\')
+                first_mil = False
+        if mil_idx < len(MIL_ORDER) - 1:
+            buf.append(r'\midrule')
+
+    buf.append(r'\bottomrule')
+    buf.append(r'\end{tabular}')
+    buf.append(r'\end{table}')
+    return '\n'.join(buf)
+
+
 # ── Tabla resumen: medias de los 3 modelos Opt- + distancia de centroide ──────
 
 def generate_summary_latex(rows_mean: list, centroid_dists: dict,
@@ -800,7 +860,7 @@ def generate_summary_latex(rows_mean: list, centroid_dists: dict,
     buf2.append(r'\centering')
     buf2.append(
         r'\caption{Independent variables used in the statistical analysis and RPD (mean across models). '
-        r'$\delta_n$: Macenko gain on CPTAC (Macenko$-$none). '
+        r'$\Delta n$: Macenko gain on CPTAC (Macenko$-$none). '
         r'$d_c$: cosine distance between TCGA and CPTAC class centroids in Virchow2 space '
         r'(top-8 attention patches, mean of three MIL models). '
         r'$\Delta p$: prevalence shift ($p_{\mathrm{CPTAC}}-p_{\mathrm{TCGA}}$). '
@@ -809,7 +869,7 @@ def generate_summary_latex(rows_mean: list, centroid_dists: dict,
     buf2.append(r'\label{tab:summary_predictors}')
     buf2.append(r'\begin{tabular}{llrrrrrr}')
     buf2.append(r'\toprule')
-    buf2.append(r'\textbf{Task} & \textbf{Class} & $\delta_n$ & $d_c$ & $\Delta p$ & $\tilde{B}_c$ & \textbf{RPD} \\')
+    buf2.append(r'\textbf{Task} & \textbf{Class} & $\Delta n$ & $d_c$ & $\Delta p$ & $\tilde{B}_c$ & \textbf{RPD} \\')
     buf2.append(r'\midrule')
 
     for task in [t.upper() for t in TASK_ORDER]:
@@ -1047,12 +1107,12 @@ def univariate_rpd_vs_morph(rows_mean: list, morph_sep: dict) -> None:
     print()
 
 
-# ── Análisis multivariante RPD ~ δn + d + B̃_c ────────────────────────────────
+# ── Análisis multivariante RPD ~ Δn + d + B̃_c ────────────────────────────────
 
 def multivariate_analysis(rows_mean: list, centroid_dists: dict,
                            morph_sep: dict) -> None:
     """
-    Regresión OLS múltiple: RPD = β0 + β1·δn + β2·d + β3·B̃_c + ε
+    Regresión OLS múltiple: RPD = β0 + β1·Δn + β2·d + β3·B̃_c + ε
     Se ajustan también modelos parciales para valorar contribución individual.
     Se reporta VIF para detectar multicolinealidad.
     """
@@ -1107,22 +1167,27 @@ def multivariate_analysis(rows_mean: list, centroid_dists: dict,
 
     sep = "═" * 60
     print(sep)
-    print("ANÁLISIS MULTIVARIANTE:  RPD ~ δn + d + B̃_c")
+    print("ANÁLISIS MULTIVARIANTE:  RPD ~ Δn + d + B̃_c")
     print(sep)
     print(f"  N = {n}")
 
     MODELS = [
-        ("δn + d + B̃_c", np.column_stack([dn, d, bs]), ["δn", "d", "B̃_c"]),
-        ("δn + B̃_c",     np.column_stack([dn, bs]),    ["δn", "B̃_c"]),
+        ("Δn + d + B̃_c", np.column_stack([dn, d, bs]), ["Δn", "d", "B̃_c"]),
+        ("Δn + B̃_c",     np.column_stack([dn, bs]),    ["Δn", "B̃_c"]),
         ("d  + B̃_c",     np.column_stack([d,  bs]),    ["d",  "B̃_c"]),
-        ("δn + d",        np.column_stack([dn, d]),     ["δn", "d"]),
+        ("Δn + d",        np.column_stack([dn, d]),     ["Δn", "d"]),
     ]
+
+    k_models   = len(MODELS)                # modelos comparados
+    alpha_bonf = 0.05 / k_models            # α corregido = 0.0125
+    print(f"\n  Corrección Bonferroni: k={k_models} modelos → α_corr={alpha_bonf:.4f}")
 
     for label, X, names in MODELS:
         b, r2, r2_adj, f_stat, p_f, se_b, t_b, p_b = ols(X, rpd)
+        sig_f = "**" if p_f < alpha_bonf else ("*" if p_f < 0.05 else "")
         print(f"\n  ── Modelo: RPD ~ {label} ──")
         print(f"    R²={r2:.3f}   R²_adj={r2_adj:.3f}   "
-              f"F={f_stat:.2f}   p(F)={p_f:.4e}")
+              f"F={f_stat:.2f}   p(F)={p_f:.4e}{sig_f}")
         for nm, bi, si, ti, pi in zip(["Intercept"] + names, b, se_b, t_b, p_b):
             sig = "*" if pi < 0.05 else (" †" if pi < 0.10 else "")
             print(f"    {nm:<12}  β={bi:+.4f}  SE={si:.4f}  "
@@ -1131,11 +1196,11 @@ def multivariate_analysis(rows_mean: list, centroid_dists: dict,
             vifs = vif(X)
             print("    VIF: " + "  ".join(f"{nm}={v:.2f}" for nm, v in zip(names, vifs)))
 
-    print("\n  (* p<0.05   † p<0.10)")
+    print(f"\n  (* p<0.05  ** p<α_Bonf={alpha_bonf:.4f}  † p<0.10)")
     print(sep)
 
     # ── Correlaciones entre predictores (Pearson vs Spearman) ────────────────
-    predictors = [("δn", dn), ("d", d), ("B̃_c", bs)]
+    predictors = [("Δn", dn), ("d", d), ("B̃_c", bs)]
     print("\n  Correlaciones entre predictores (linealidad vs. monotonicidad)")
     print(f"  {'Par':<16}  {'Pearson r':>10}  {'Spearman ρ':>11}  {'p(Spearman)':>12}")
     print("  " + "─" * 56)
@@ -1210,9 +1275,22 @@ def generate_stats_latex(rows_mean: list, centroid_dists: dict,
         if p < 0.001: return r"$<$0.001"
         return f"{p:.3f}"
 
-    def sig(p):
-        if p < 0.05:  return r"$^{*}$"
-        if p < 0.10:  return r"$^{\dagger}$"
+    def bh_reject(pvals, alpha=0.05):
+        """Benjamini-Hochberg procedure. Returns boolean array (True = rejected)."""
+        pvals = np.array(pvals, dtype=float)
+        m = len(pvals)
+        idx = np.argsort(pvals)
+        thresholds = (np.arange(1, m + 1) / m) * alpha
+        rejected = pvals[idx] <= thresholds
+        result = np.zeros(m, dtype=bool)
+        if rejected.any():
+            last = np.where(rejected)[0][-1]
+            result[idx[:last + 1]] = True
+        return result
+
+    def sig_bh(rejected, p):
+        if rejected: return r"$^{*}$"
+        if p < 0.10: return r"$^{\dagger}$"
         return ""
 
     def pearson(a, b):
@@ -1225,29 +1303,65 @@ def generate_stats_latex(rows_mean: list, centroid_dists: dict,
         (r"$\tilde{B}_c$",   bs),
         (r"$\Delta p$",       dp),
     ]
-    uni_rows = []
+    # Compute all univariate stats first (need all p-values for BH)
+    uni_stats = []
     for label, x in uni_predictors:
         b, r2, *_, se_b, t_b, p_b = ols(x.reshape(-1, 1), rpd)
         r_val = pearson(x, rpd)
-        # b[1] = slope (b[0] = intercept)
+        rho_u, p_rho_u = stats.spearmanr(x, rpd)
+        uni_stats.append((label, r_val, rho_u, p_rho_u, r2, b[1], p_b[1]))
+
+    # BH over all univariate p-values: Spearman (m=4) + OLS slope (m=4)
+    uni_p_rho = [s[3] for s in uni_stats]
+    uni_p_ols = [s[6] for s in uni_stats]
+    uni_bh_rho = bh_reject(uni_p_rho)
+    uni_bh_ols = bh_reject(uni_p_ols)
+
+    uni_rows = []
+    for i, (label, r_val, rho_u, p_rho_u, r2, slope, p_ols) in enumerate(uni_stats):
         uni_rows.append(
-            f"    {label} & ${r_val:+.3f}$ & ${r2:.3f}$ & ${b[1]:+.3f}$ & {pf(p_b[1])} & {sig(p_b[1])} \\\\"
+            f"    {label} & ${r_val:+.3f}$ & ${rho_u:+.3f}$ & "
+            f"{pf(p_rho_u)}{sig_bh(uni_bh_rho[i], p_rho_u)} & "
+            f"${r2:.3f}$ & ${slope:+.3f}$ & "
+            f"{pf(p_ols)}{sig_bh(uni_bh_ols[i], p_ols)} \\\\"
         )
+
+    # ── Modelo completo (para caption: VIF y p de B̃_c) ──────────────────────
+    def vif3(X):
+        """VIF de cada columna en un diseño de 3 predictores."""
+        vifs = []
+        for i in range(X.shape[1]):
+            _, r2_i, *_ = ols(np.delete(X, i, axis=1), X[:, i])
+            vifs.append(1 / (1 - r2_i) if r2_i < 1 else float("inf"))
+        return vifs
+
+    X_full = np.column_stack([dn, d, bs])
+    b_full, r2_full, _, _, _, _, _, p_full = ols(X_full, rpd)
+    vifs_full = vif3(X_full)          # [VIF_dn, VIF_d, VIF_bs]
+    p_bs_full  = p_full[3]            # p-value of B̃_c in full model
+    vif_bs_full = vifs_full[2]        # VIF of B̃_c in full model
+
+    # Collinearity stats needed for caption (computed below, use placeholders here)
+    # Will be filled after collin_stats is built
 
     # ── Multivariante ─────────────────────────────────────────────────────────
     b_mv, r2_mv, r2_adj_mv, f_mv, pf_mv, se_mv, t_mv, p_mv = ols(
         np.column_stack([dn, d]), rpd)
 
+    # BH over multivariate p-values: F-test + 2 coefficients
+    mv_pvals = [pf_mv, p_mv[1], p_mv[2]]
+    mv_bh = bh_reject(mv_pvals)
+
     mv_fit_row = (
-        r"    RPD $\sim \Delta n + d_c$ & "
-        f"${r2_mv:.3f}$ & ${r2_adj_mv:.3f}$ & ${f_mv:.2f}$ & {pf(pf_mv)} & {sig(pf_mv)} \\\\"
+        r"    RPD $\sim \Delta n + d_c$ & \multicolumn{2}{c}{---} & "
+        f"${r2_mv:.3f}$ & ${r2_adj_mv:.3f}$ & ${f_mv:.2f}$ & {pf(pf_mv)}{sig_bh(mv_bh[0], pf_mv)} \\\\"
     )
     # coeficientes (sin intercept)
     coef_rows = []
-    for nm, bi, si, ti, pi in zip([r"$\Delta n$", r"$d_c$"],
-                                   b_mv[1:], se_mv[1:], t_mv[1:], p_mv[1:]):
+    for j, (nm, bi, si, ti, pi) in enumerate(zip([r"$\Delta n$", r"$d_c$"],
+                                                   b_mv[1:], se_mv[1:], t_mv[1:], p_mv[1:])):
         coef_rows.append(
-            f"    {nm} & ${bi:+.4f}$ & ${si:.4f}$ & ${ti:+.3f}$ & {pf(pi)} & {sig(pi)} \\\\"
+            f"    {nm} & ${bi:+.4f}$ & ${si:.4f}$ & ${ti:+.3f}$ & {pf(pi)}{sig_bh(mv_bh[1 + j], pi)} & \\\\"
         )
 
     # ── Colinealidad ──────────────────────────────────────────────────────────
@@ -1256,13 +1370,18 @@ def generate_stats_latex(rows_mean: list, centroid_dists: dict,
         (r"$\Delta n \sim \tilde{B}_c$",   dn, bs),
         (r"$d_c \sim \tilde{B}_c$",        d,  bs),
     ]
-    collin_rows = []
+    collin_stats = []
     for label, xa, xb in collin_pairs:
-        pr   = pearson(xa, xb)
+        pr     = pearson(xa, xb)
         rho_s, p_s = stats.spearmanr(xa, xb)
-        v    = vif_pair(xa, xb)
+        v      = vif_pair(xa, xb)
+        collin_stats.append((label, pr, rho_s, p_s, v))
+
+    collin_bh = bh_reject([s[3] for s in collin_stats])
+    collin_rows = []
+    for i, (label, pr, rho_s, p_s, v) in enumerate(collin_stats):
         collin_rows.append(
-            f"    {label} & ${pr:+.3f}$ & ${rho_s:+.3f}$ & {pf(p_s)} & ${v:.2f}$ & {sig(p_s)} \\\\"
+            f"    {label} & ${pr:+.3f}$ & ${rho_s:+.3f}$ & {pf(p_s)}{sig_bh(collin_bh[i], p_s)} & ${v:.2f}$ & \\\\"
         )
 
     # ── Ensamblado final ──────────────────────────────────────────────────────
@@ -1272,34 +1391,40 @@ def generate_stats_latex(rows_mean: list, centroid_dists: dict,
         (r"\caption{Statistical models predicting relative performance degradation (RPD) "
          r"from domain shift factors. The most parsimonious multivariate model includes only "
          r"$\Delta n$ and $d_c$ ($n=" + str(n) + r"$ molecular classes). "
-         r"$\tilde{B}_c$ is excluded due to significant collinearity with $\Delta n$ "
-         r"(Spearman $\rho=-0.764$, $p=0.006$) and marginal collinearity with $d_c$ "
-         r"($\rho=-0.527$, $p=0.096$), which prevents independent contributions "
-         r"in a joint model. "
-         r"$^{*}p < 0.05$, $^{\dagger}p < 0.10$.}"),
+         r"$\tilde{B}_c$ is excluded because it contributes no independent predictive power "
+         r"once $\Delta n$ and $d_c$ are included "
+         r"($\beta\approx" + f"{b_full[3]:+.3f}" + r"$, $p=" + f"{p_bs_full:.3f}" + r"$, "
+         r"$\Delta R^2<0.001$), and shows moderate collinearity with $\Delta n$ "
+         r"(Spearman $\rho=" + f"{collin_stats[1][2]:+.3f}" + r"$, $p=" + f"{collin_stats[1][3]:.3f}" + r"$) "
+         r"and $d_c$ ($\rho=" + f"{collin_stats[2][2]:+.3f}" + r"$, $p=" + f"{collin_stats[2][3]:.3f}" + r"$), "
+         r"with VIF$=" + f"{vif_bs_full:.2f}" + r"$ in the joint model. "
+         r"Multiple-testing correction applied via Benjamini--Hochberg (BH) procedure "
+         r"($\alpha=0.05$) separately within each section (univariate Spearman tests, "
+         r"univariate OLS slope tests, multivariate model, collinearity tests). "
+         r"$^{*}$BH-significant ($q<0.05$), $^{\dagger}p<0.10$.}"),
         r"\label{tab:regression-models}",
         r"\small",
-        r"\begin{tabular}{lccccl}",
+        r"\begin{tabular}{lccccccl}",
         r"\toprule\toprule",
-        r"\multicolumn{6}{l}{\textit{Univariate Models}} \\",
+        r"\multicolumn{8}{l}{\textit{Univariate Models}} \\",
         r"\midrule",
-        r"\textbf{Model} & \textbf{$r$} & \textbf{$R^2$} & \textbf{$\beta$} & \textbf{$p$-value} & \textbf{Sig} \\",
+        r"\textbf{Model} & \textbf{$r$} & \textbf{$\rho$} & \textbf{$p(\rho)$} & \textbf{$R^2$} & \textbf{$\beta$} & \textbf{$p$-value} \\",
         r"\midrule",
     ] + uni_rows + [
         r"\midrule\midrule",
-        r"\multicolumn{6}{l}{\textit{Multivariate Model}} \\",
+        r"\multicolumn{8}{l}{\textit{Multivariate Model}} \\",
         r"\midrule",
-        r"\textbf{Model} & \textbf{$R^2$} & \textbf{Adj.\ $R^2$} & \textbf{$F$-stat} & \textbf{$p$-value} & \textbf{Sig} \\",
+        r"\textbf{Model} & \multicolumn{2}{c}{} & \textbf{$R^2$} & \textbf{Adj.\ $R^2$} & \textbf{$F$-stat} & \textbf{$p$-value} \\",
         r"\midrule",
         mv_fit_row,
         r"\midrule",
-        r" & \textbf{$\beta$} & \textbf{Std Error} & \textbf{$t$-value} & \textbf{$p$-value} & \textbf{Sig} \\",
+        r" & \textbf{$\beta$} & \textbf{Std Error} & \textbf{$t$-value} & \textbf{$p$-value} & \multicolumn{2}{l}{} \\",
         r"\midrule",
     ] + coef_rows + [
         r"\midrule",
-        r"\multicolumn{6}{l}{\textit{Predictor Collinearity}} \\",
+        r"\multicolumn{8}{l}{\textit{Predictor Collinearity}} \\",
         r"\midrule",
-        r"\textbf{Pair} & \textbf{Pearson $r$} & \textbf{Spearman $\rho$} & \textbf{$p(\rho)$} & \textbf{VIF} & \textbf{Sig} \\",
+        r"\textbf{Pair} & \textbf{Pearson $r$} & \textbf{Spearman $\rho$} & \textbf{$p(\rho)$} & \textbf{VIF} & \multicolumn{2}{l}{} \\",
         r"\midrule",
     ] + collin_rows + [
         r"\bottomrule",
@@ -1662,10 +1787,11 @@ if __name__ == '__main__':
     analyse_confusions_vs_biology(results_dir)
 
 
-def plot_morphology_vs_confusion(results_dir: Path) -> None:
+def plot_morphology_vs_confusion(results_dir: Path, show_diag: bool = True) -> None:
     """
     Per tarea: figura con 4 paneles (CM clam | CM dsmil | CM transmil | Bio matrix).
     Plus scatter global B_c,d vs confusion rate. Tonos rosados.
+    show_diag: si True muestra diagonal con color; si False la deja en blanco.
     """
     import csv as _csv
     import matplotlib
@@ -1684,6 +1810,43 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
     PINK_INV = mcolors.LinearSegmentedColormap.from_list(
         'pink_inv', ['#AD1457', '#FFFFFF'], N=256)
 
+    def _row_heatmap(ax, mat, cmap, fmt, xlabel, ylabel, title, row_labels, col_labels, global_max=None, row_maxes=None):
+        """Heatmap con normalización por filas: vmin=0, vmax=max de la fila (o global_max/row_maxes si se pasan)."""
+        n = mat.shape[0]
+        is_inv = (cmap is PINK_INV)
+        rgba = np.ones((n, n, 4))  # blanco por defecto
+        for ri in range(n):
+            row_max = (row_maxes[ri] if row_maxes is not None else (global_max if global_max is not None else max(mat[ri, ci] for ci in range(n))))
+            rrange = row_max if row_max > 0 else 1.0
+            for ci in range(n):
+                if not show_diag and ri == ci:
+                    continue
+                norm_val = max(0.0, min(1.0, mat[ri, ci] / rrange))
+                rgba[ri, ci] = cmap(norm_val)
+        ax.imshow(rgba, aspect='auto', interpolation='nearest',
+                  extent=[-0.5, n - 0.5, n - 0.5, -0.5])
+        for k in range(n + 1):
+            ax.axhline(k - 0.5, color='#E8A0B4', lw=0.5)
+            ax.axvline(k - 0.5, color='#E8A0B4', lw=0.5)
+        for ri in range(n):
+            row_max = (row_maxes[ri] if row_maxes is not None else (global_max if global_max is not None else max(mat[ri, ci] for ci in range(n))))
+            rrange = row_max if row_max > 0 else 1.0
+            for ci in range(n):
+                if not show_diag and ri == ci:
+                    continue
+                norm_val = max(0.0, min(1.0, mat[ri, ci] / rrange))
+                dark_bg = (norm_val < 0.5) if is_inv else (norm_val > 0.5)
+                ax.text(ci, ri, format(mat[ri, ci], fmt),
+                        ha='center', va='center',
+                        color='white' if dark_bg else '#2D0A1A', fontsize=9)
+        ax.set_xticks(range(n))
+        ax.set_xticklabels(col_labels, fontsize=8)
+        ax.set_yticks(range(n))
+        ax.set_yticklabels(row_labels, fontsize=8)
+        ax.set_xlabel(xlabel, fontsize=8)
+        ax.set_ylabel(ylabel, fontsize=8)
+        ax.set_title(title, fontsize=10, color='#6D1B3A')
+
     DISPLAY_LABELS = {
         'PAM50': ['Basal', 'Her2-e', 'LumA', 'LumB', 'Normal'],
         'ER':    ['neg', 'pos'],
@@ -1698,12 +1861,12 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
     TASK_N_CLS = {'er': 2, 'erbb2': 2, 'pr': 2, 'pam50': 5}
     EXP_BASE   = Path('/shared/home/jorgarcia/PathBench-MIL/experiments')
 
-    def _load_cm_counts(task, mil):
+    def _load_cm_counts(task, mil, dataset='cptac'):
         if task == 'pam50':
             cms = _parse_pam50_cms(results_dir)
         else:
             cms = _parse_binary_cms(results_dir, task)
-        cm = cms.get((mil, 'none', 'cptac'))
+        cm = cms.get((mil, 'none', dataset))
         if cm is None:
             return None
         return cm.astype(float)
@@ -1722,6 +1885,11 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
                          for i in range(len(raw))])
 
     x_sc, y_sc, c_sc, t_sc = [], [], [], []
+    # Máximo global entre todas las matrices biológicas
+    _global_bio_max = max(
+        (m.max() for t in TASK_ORDER
+         for m in [_load_bio(t.upper())] if m is not None),
+        default=1.0)
     TCOL = {'ER': '#F06292', 'ERBB2': '#9b59b6',
             'PR': '#AD1457', 'PAM50': '#FADADD'}
 
@@ -1731,15 +1899,22 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
         bio_mat = _load_bio(task_up)
         n_cls   = len(disp)
 
-        panels = []  # (title, mat, vmax, fmt, cbar_lbl, cmap)
+        def _off_diag(m):
+            off = m[~np.eye(m.shape[0], dtype=bool)]
+            return float(off.min()), float(off.max()) if len(off) > 0 else (0.0, 1.0)
+
+        panels = []  # (title, mat, vmin, vmax, fmt, cbar_lbl, cmap)
         for mil in MIL_ORDER:
             cm = _load_cm_counts(task, mil)
             if cm is not None:
+                _cm_vmin, _cm_vmax = _off_diag(cm)
                 panels.append((MIL_TITLES[mil], cm,
-                                max(cm.max(), 1), '.0f', 'Count', PINK))
+                                _cm_vmin, max(_cm_vmax, 1), '.0f', 'Count', PINK))
         if bio_mat is not None:
+            _bio_vmin, _bio_vmax_off = _off_diag(bio_mat)
+            _bio_vmax = max(_bio_vmax_off, 0.1)
             panels.append(('Morphological dist.', bio_mat,
-                           max(bio_mat.max(), 0.1), '.2f', 'B_cd', PINK_INV))
+                           _bio_vmin, _bio_vmax, '.2f', 'B_cd', PINK_INV))
             for mil in MIL_ORDER:
                 cm = _load_cm_counts(task, mil)
                 if cm is None:
@@ -1765,36 +1940,23 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
             axes = [axes]
         fig.subplots_adjust(wspace=0.45)
 
-        for ax, (title, mat, vmax, fmt, cbar_lbl, cmap) in zip(axes, panels):
-            sns.heatmap(mat, annot=False, cmap=cmap,
-                        vmin=0, vmax=vmax,
-                        xticklabels=disp, yticklabels=disp,
-                        ax=ax, linewidths=0.5, linecolor='#E8A0B4',
-                        cbar_kws={'label': cbar_lbl, 'shrink': 0.8})
-            # Manual annotations with contrast-aware text color
-            # For PINK (white→dark): dark bg = high val → white text
-            # For PINK_INV (dark→white): dark bg = low val → white text
-            is_inv = (cmap is PINK_INV)
-            for ri in range(mat.shape[0]):
-                for ci in range(mat.shape[1]):
-                    val = mat[ri, ci]
-                    norm_val = val / vmax
-                    dark_bg = (norm_val < 0.5) if is_inv else (norm_val > 0.5)
-                    color = 'white' if dark_bg else '#2D0A1A'
-                    ax.text(ci + 0.5, ri + 0.5, format(val, fmt),
-                            ha='center', va='center',
-                            color=color, fontsize=9)
-            ax.set_title(title, fontsize=10, color='#6D1B3A')
-            ax.set_xlabel('Predicted / CPTAC class', fontsize=8)
-            ax.set_ylabel('True / TCGA class', fontsize=8)
-            ax.tick_params(axis='both', labelsize=8)
+        for ax, (title, mat, vmin, vmax, fmt, cbar_lbl, cmap) in zip(axes, panels):
+            _gmax = None  # siempre normalización por fila
+            _ylabel = 'True / TCGA class' if cmap is PINK_INV else 'True / CPTAC class'
+            _row_heatmap(ax, mat, cmap, fmt,
+                        xlabel='Predicted / CPTAC class',
+                        ylabel=_ylabel,
+                        title=title,
+                        row_labels=disp, col_labels=disp,
+                        global_max=_gmax)
 
         task_disp = TASK_DISPLAY.get(task_up, task_up)
         fig.suptitle(task_disp, fontsize=13, fontweight='bold', color='#6D1B3A')
         plt.tight_layout(rect=[0, 0, 1, 0.93])
 
         for ext in ('pdf', 'png'):
-            out = figures_dir / f'morph_vs_conf_{task}.{ext}'
+            diag_sfx = '_diag' if show_diag else '_nodiag'
+            out = figures_dir / f'morph_vs_conf_{task}{diag_sfx}.{ext}'
             fig.savefig(out, bbox_inches='tight', dpi=200, facecolor='white')
             print(f'  Guardado: {out}', file=sys.stderr)
         plt.close(fig)
@@ -1802,41 +1964,50 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
         # ── Figura combinada: CM global (suma 3 modelos) + bio matrix ────────
         cms_all = [_load_cm_counts(task, mil) for mil in MIL_ORDER]
         cms_all = [c for c in cms_all if c is not None]
+        cms_tcga = [_load_cm_counts(task, mil, dataset='tcga') for mil in MIL_ORDER]
+        cms_tcga = [c for c in cms_tcga if c is not None]
         if cms_all and bio_mat is not None:
             cm_total = sum(cms_all)
-            combined_panels = [
-                ('Confusion (sum 3 models)', cm_total,
-                 max(cm_total.max(), 1), '.0f', 'Count', PINK),
+            _cmt_vmin, _cmt_vmax = _off_diag(cm_total)
+            combined_panels = []
+            if cms_tcga:
+                cm_tcga_total = sum(cms_tcga)
+                _tcga_vmin, _tcga_vmax = _off_diag(cm_tcga_total)
+                combined_panels.append(('Confusion TCGA (sum 3 models)', cm_tcga_total,
+                    _tcga_vmin, max(_tcga_vmax, 1), '.0f', 'Count', PINK))
+            combined_panels += [
+                ('Confusion CPTAC (sum 3 models)', cm_total,
+                 _cmt_vmin, max(_cmt_vmax, 1), '.0f', 'Count', PINK),
                 ('Morphological dist.', bio_mat,
-                 max(bio_mat.max(), 0.1), '.2f', 'B_cd', PINK_INV),
+                 _bio_vmin, _bio_vmax, '.2f', 'B_cd', PINK_INV),
             ]
-            fig2_w = max(10, n_cls * 2.8)
+            n_cpanels = len(combined_panels)
+            fig2_w = max(5 * n_cpanels, n_cls * 2.8 * n_cpanels / 2)
             fig2_h = max(4, n_cls * 1.3)
-            fig2, axes2 = plt.subplots(1, 2, figsize=(fig2_w, fig2_h))
+            fig2, axes2 = plt.subplots(1, n_cpanels, figsize=(fig2_w, fig2_h))
+            if n_cpanels == 1:
+                axes2 = [axes2]
             fig2.subplots_adjust(wspace=0.45)
-            for ax2, (title2, mat2, vmax2, fmt2, lbl2, cmap2) in zip(axes2, combined_panels):
-                sns.heatmap(mat2, annot=False, cmap=cmap2,
-                            vmin=0, vmax=vmax2,
-                            xticklabels=disp, yticklabels=disp,
-                            ax=ax2, linewidths=0.5, linecolor='#E8A0B4',
-                            cbar_kws={'label': lbl2, 'shrink': 0.8})
-                is_inv2 = (cmap2 is PINK_INV)
-                for ri in range(mat2.shape[0]):
-                    for ci in range(mat2.shape[1]):
-                        val2 = mat2[ri, ci]
-                        norm2 = val2 / vmax2
-                        dark2 = (norm2 < 0.5) if is_inv2 else (norm2 > 0.5)
-                        ax2.text(ci + 0.5, ri + 0.5, format(val2, fmt2),
-                                 ha='center', va='center',
-                                 color='white' if dark2 else '#2D0A1A', fontsize=9)
-                ax2.set_title(title2, fontsize=10, color='#6D1B3A')
-                ax2.set_xlabel('Predicted / CPTAC class', fontsize=8)
-                ax2.set_ylabel('True / TCGA class', fontsize=8)
-                ax2.tick_params(axis='both', labelsize=8)
+            for ax2, (title2, mat2, vmin2, vmax2, fmt2, lbl2, cmap2) in zip(axes2, combined_panels):
+                _gmax2 = float(mat2.max()) if mat2.max() > 0 else 1.0
+                # Para la bio matrix: normalizar cada fila por B̃_c de esa clase
+                if cmap2 is PINK_INV and bio_mat is not None:
+                    # Bio matrix: normalización por max global entre todas las tareas
+                    _gmax2_use, _rmaxes2_use = _global_bio_max, None
+                else:
+                    # CM: normalización por fila (global_max=None)
+                    _gmax2_use, _rmaxes2_use = None, None
+                _ylabel2 = 'True / TCGA class' if cmap2 is PINK_INV else 'True / CPTAC class'
+                _row_heatmap(ax2, mat2, cmap2, fmt2,
+                            xlabel='Predicted / CPTAC class',
+                            ylabel=_ylabel2,
+                            title=title2,
+                            row_labels=disp, col_labels=disp,
+                            global_max=_gmax2_use, row_maxes=_rmaxes2_use)
             fig2.suptitle(task_disp, fontsize=13, fontweight='bold', color='#6D1B3A')
             plt.tight_layout(rect=[0, 0, 1, 0.93])
             for ext in ('pdf', 'png'):
-                out2 = figures_dir / f'morph_vs_conf_{task}_combined.{ext}'
+                out2 = figures_dir / f'morph_vs_conf_{task}_combined{diag_sfx}.{ext}'
                 fig2.savefig(out2, bbox_inches='tight', dpi=200, facecolor='white')
                 print(f'  Guardado: {out2}', file=sys.stderr)
             plt.close(fig2)
@@ -2092,13 +2263,13 @@ def generate_latex(rows: list) -> str:
         r'PR-AUC is reported for binary tasks (ER, HER2, PR) and F1 for PAM50. '
         r'\textbf{none}: PR-AUC or F1 on CPTAC without stain normalisation. '
         r'\textbf{macenko}: same metric with Macenko stain normalisation. '
-        r'$\delta_n = \text{macenko} - \text{none}$ on CPTAC.}'
+        r'$\Delta n = \text{macenko} - \text{none}$ on CPTAC.}'
     )
     buf.append(r'\label{tab:results_summary}')
     buf.append(r'\begin{tabular}{lllrrr}')
     buf.append(r'\toprule')
     buf.append(r'\textbf{MIL} & \textbf{Task} & \textbf{Class} '
-               r'& \textbf{none} & \textbf{macenko} & $\delta_n$ \\')
+               r'& \textbf{none} & \textbf{macenko} & $\Delta n$ \\')
     buf.append(r'\midrule')
 
     for mil_idx, mil in enumerate(MIL_ORDER):
@@ -2145,11 +2316,11 @@ def generate_latex(rows: list) -> str:
     return '\n'.join(buf)
 
 
-# ── Análisis univariante RPD ~ δn ────────────────────────────────────────────
+# ── Análisis univariante RPD ~ Δn ────────────────────────────────────────────
 
 def univariate_analysis(rows: list) -> None:
     """
-    Regresión lineal simple OLS:  RPD = β0 + β1·δn + ε
+    Regresión lineal simple OLS:  RPD = β0 + β1·Δn + ε
 
     Se excluyen filas con RPD = NaN o RPD = 1.0 exacto
     (colapso total, p.ej. Her2 en CPTAC con F1=0 para todos los modelos).
@@ -2211,7 +2382,7 @@ def univariate_analysis(rows: list) -> None:
     # ── Impresión ─────────────────────────────────────────────────────────
     sep = '─' * 60
     print(sep)
-    print('ANÁLISIS UNIVARIANTE:  RPD ~ δn')
+    print('ANÁLISIS UNIVARIANTE:  RPD ~ Δn')
     print(sep)
     print(f'  N (filas válidas)    : {n}  '
           f'(excluidas por NaN: {len(rows) - n})')
@@ -2240,14 +2411,14 @@ def univariate_analysis(rows: list) -> None:
     print('  Interpretación:')
     if sig:
         print(f'    Relación significativa (p={p_value:.3e}).')
-        print(f'    Pendiente {direction}: mayor δn → '
+        print(f'    Pendiente {direction}: mayor Δn → '
               + ('menor' if slope < 0 else 'mayor') + ' RPD.')
-        print(f'    δn explica el {r2 * 100:.1f}% de la varianza en RPD (R²).')
+        print(f'    Δn explica el {r2 * 100:.1f}% de la varianza en RPD (R²).')
         print(f'    Tamaño del efecto: r={r_pearson:+.3f} ({_label_r(r_pearson)}), '
               f'f²={f2:.3f} ({_label_f2(f2)}).')
     else:
         print(f'    Relación NO significativa (p={p_value:.3e}, α=0.05).')
-        print(f'    δn no predice linealmente el RPD en esta muestra.')
+        print(f'    Δn no predice linealmente el RPD en esta muestra.')
     print(sep)
     print()
 
@@ -2632,7 +2803,7 @@ def generate_summary_latex(rows_mean: list, centroid_dists: dict,
     buf2.append(r'\centering')
     buf2.append(
         r'\caption{Independent variables used in the statistical analysis and RPD (mean across models). '
-        r'$\delta_n$: Macenko gain on CPTAC (Macenko$-$none). '
+        r'$\Delta n$: Macenko gain on CPTAC (Macenko$-$none). '
         r'$d_c$: cosine distance between TCGA and CPTAC class centroids in Virchow2 space '
         r'(top-8 attention patches, mean of three MIL models). '
         r'$\Delta p$: prevalence shift ($p_{\mathrm{CPTAC}}-p_{\mathrm{TCGA}}$). '
@@ -2641,7 +2812,7 @@ def generate_summary_latex(rows_mean: list, centroid_dists: dict,
     buf2.append(r'\label{tab:summary_predictors}')
     buf2.append(r'\begin{tabular}{llrrrrrr}')
     buf2.append(r'\toprule')
-    buf2.append(r'\textbf{Task} & \textbf{Class} & $\delta_n$ & $d_c$ & $\Delta p$ & $\tilde{B}_c$ & \textbf{RPD} \\')
+    buf2.append(r'\textbf{Task} & \textbf{Class} & $\Delta n$ & $d_c$ & $\Delta p$ & $\tilde{B}_c$ & \textbf{RPD} \\')
     buf2.append(r'\midrule')
 
     for task in [t.upper() for t in TASK_ORDER]:
@@ -2879,12 +3050,12 @@ def univariate_rpd_vs_morph(rows_mean: list, morph_sep: dict) -> None:
     print()
 
 
-# ── Análisis multivariante RPD ~ δn + d + B̃_c ────────────────────────────────
+# ── Análisis multivariante RPD ~ Δn + d + B̃_c ────────────────────────────────
 
 def multivariate_analysis(rows_mean: list, centroid_dists: dict,
                            morph_sep: dict) -> None:
     """
-    Regresión OLS múltiple: RPD = β0 + β1·δn + β2·d + β3·B̃_c + ε
+    Regresión OLS múltiple: RPD = β0 + β1·Δn + β2·d + β3·B̃_c + ε
     Se ajustan también modelos parciales para valorar contribución individual.
     Se reporta VIF para detectar multicolinealidad.
     """
@@ -2939,15 +3110,15 @@ def multivariate_analysis(rows_mean: list, centroid_dists: dict,
 
     sep = "═" * 60
     print(sep)
-    print("ANÁLISIS MULTIVARIANTE:  RPD ~ δn + d + B̃_c")
+    print("ANÁLISIS MULTIVARIANTE:  RPD ~ Δn + d + B̃_c")
     print(sep)
     print(f"  N = {n}")
 
     MODELS = [
-        ("δn + d + B̃_c", np.column_stack([dn, d, bs]), ["δn", "d", "B̃_c"]),
-        ("δn + B̃_c",     np.column_stack([dn, bs]),    ["δn", "B̃_c"]),
+        ("Δn + d + B̃_c", np.column_stack([dn, d, bs]), ["Δn", "d", "B̃_c"]),
+        ("Δn + B̃_c",     np.column_stack([dn, bs]),    ["Δn", "B̃_c"]),
         ("d  + B̃_c",     np.column_stack([d,  bs]),    ["d",  "B̃_c"]),
-        ("δn + d",        np.column_stack([dn, d]),     ["δn", "d"]),
+        ("Δn + d",        np.column_stack([dn, d]),     ["Δn", "d"]),
     ]
 
     for label, X, names in MODELS:
@@ -2967,7 +3138,7 @@ def multivariate_analysis(rows_mean: list, centroid_dists: dict,
     print(sep)
 
     # ── Correlaciones entre predictores (Pearson vs Spearman) ────────────────
-    predictors = [("δn", dn), ("d", d), ("B̃_c", bs)]
+    predictors = [("Δn", dn), ("d", d), ("B̃_c", bs)]
     print("\n  Correlaciones entre predictores (linealidad vs. monotonicidad)")
     print(f"  {'Par':<16}  {'Pearson r':>10}  {'Spearman ρ':>11}  {'p(Spearman)':>12}")
     print("  " + "─" * 56)
@@ -3342,7 +3513,8 @@ if __name__ == '__main__':
     print('Generando heatmaps de matrices biológicas...', file=sys.stderr)
     plot_biological_matrix(results_dir)
     print('Generando morfología vs confusión...', file=sys.stderr)
-    plot_morphology_vs_confusion(results_dir)
+    plot_morphology_vs_confusion(results_dir, show_diag=True)
+    plot_morphology_vs_confusion(results_dir, show_diag=False)
     print('Generando diagramas de barras...', file=sys.stderr)
     plot_bar_charts(rows, results_dir)
 
@@ -3356,6 +3528,11 @@ if __name__ == '__main__':
     summary_out_path = results_dir / 'summary_table.tex'
     summary_out_path.write_text(summary_latex, encoding='utf-8')
     print(f'% LaTeX guardado en {summary_out_path}', file=sys.stderr)
+
+    perf_mil_latex = generate_performance_per_mil_latex(rows)
+    perf_mil_path = results_dir / 'performance_per_mil_table.tex'
+    perf_mil_path.write_text(perf_mil_latex, encoding='utf-8')
+    print(f'% LaTeX guardado en {perf_mil_path}', file=sys.stderr)
 
     centroid_latex = generate_centroid_latex()
     centroid_out_path = results_dir / 'centroid_distances_table.tex'
@@ -3553,7 +3730,8 @@ def plot_morphology_vs_confusion(results_dir: Path) -> None:
     plot_biological_matrix(results_dir)
 
     print("Generando morfología vs confusión...", file=sys.stderr)
-    plot_morphology_vs_confusion(results_dir)
+    plot_morphology_vs_confusion(results_dir, show_diag=True)
+    plot_morphology_vs_confusion(results_dir, show_diag=False)
 
     print("Generando diagramas de barras...", file=sys.stderr)
     plot_bar_charts(rows, results_dir)

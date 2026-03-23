@@ -15,4 +15,4 @@ pathomil/*
 build/*
 config/*
 slurm_logs/*
-results/*
+results/old/*

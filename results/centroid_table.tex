@@ -1,0 +1,22 @@
+\begin{table}[ht]
+\centering
+\caption{Cosine centroid distances per MIL model and mean ($d_c$) between TCGA and CPTAC class centroids in Virchow2 feature space.}
+\label{tab:covariate_shift}
+\begin{tabular}{llrrrr}
+\toprule
+Task & Class & CLAM-MB & DSMIL & TransMIL & $d_c$ \\
+\midrule
+    PAM50 & Basal-like & 0.099 & 0.222 & 0.096 & 0.139 \\
+    PAM50 & HER2-enriched & 0.118 & 0.365 & 0.109 & 0.197 \\
+    PAM50 & Luminal A & 0.096 & 0.184 & 0.087 & 0.123 \\
+    PAM50 & Luminal B & 0.123 & 0.204 & 0.121 & 0.149 \\
+    PAM50 & Normal-like & 0.103 & 0.232 & 0.106 & 0.147 \\
+    ER & ER-negative & 0.096 & 0.208 & 0.102 & 0.136 \\
+    ER & ER-positive & 0.098 & 0.125 & 0.093 & 0.105 \\
+    PR & PR-negative & 0.093 & 0.133 & 0.111 & 0.112 \\
+    PR & PR-positive & 0.100 & 0.139 & 0.114 & 0.118 \\
+    HER2 & HER2-negative & 0.091 & 0.145 & 0.082 & 0.106 \\
+    HER2 & HER2-positive & 0.098 & 0.153 & 0.096 & 0.115 \\
+\bottomrule
+\end{tabular}
+\end{table}

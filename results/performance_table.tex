@@ -1,0 +1,46 @@
+\begin{table}[ht]
+\centering
+\caption{Performance per MIL aggregator. TCGA: hold-out test score (no stain normalisation); CPTAC: external test score (no stain normalisation). RPD: relative performance drop.}
+\label{tab:mccv-ho-performance}
+\begin{tabular}{lllcrrr}
+\toprule
+\textbf{MIL} & \textbf{Task} & \textbf{Class} & \textbf{Metric} & \textbf{TCGA} & \textbf{CPTAC} & \textbf{RPD} \\
+\midrule
+   \multirow{11}{*}{CLAM-MB} & \multirow{5}{*}{PAM50} & Basal-like & \multirow{5}{*}{F1} & 0.852 & 0.693 & $+0.187$ \\
+    &  & HER2-enriched &  & 0.598 & 0.000 & $+1.000$ \\
+    &  & Luminal A &  & 0.865 & 0.732 & $+0.154$ \\
+    &  & Luminal B &  & 0.629 & 0.200 & $+0.682$ \\
+    &  & Normal-like &  & 0.179 & 0.000 & $+1.000$ \\
+    & \multirow{2}{*}{ER} & ER-negative & \multirow{2}{*}{PR-AUC} & 0.670 & 0.698 & $-0.042$ \\
+    &  & ER-positive &  & 0.955 & 0.881 & $+0.077$ \\
+    & \multirow{2}{*}{PR} & PR-negative & \multirow{2}{*}{PR-AUC} & 0.901 & 0.764 & $+0.152$ \\
+    &  & PR-positive &  & 0.962 & 0.822 & $+0.145$ \\
+    & \multirow{2}{*}{HER2} & HER2-negative & \multirow{2}{*}{PR-AUC} & 0.983 & 0.925 & $+0.059$ \\
+    &  & HER2-positive &  & 0.728 & 0.176 & $+0.758$ \\
+\midrule
+   \multirow{11}{*}{DSMIL} & \multirow{5}{*}{PAM50} & Basal-like & \multirow{5}{*}{F1} & 0.824 & 0.633 & $+0.232$ \\
+    &  & HER2-enriched &  & 0.538 & 0.000 & $+1.000$ \\
+    &  & Luminal A &  & 0.862 & 0.745 & $+0.136$ \\
+    &  & Luminal B &  & 0.607 & 0.242 & $+0.601$ \\
+    &  & Normal-like &  & 0.353 & 0.062 & $+0.824$ \\
+    & \multirow{2}{*}{ER} & ER-negative & \multirow{2}{*}{PR-AUC} & 0.810 & 0.713 & $+0.120$ \\
+    &  & ER-positive &  & 0.978 & 0.854 & $+0.127$ \\
+    & \multirow{2}{*}{PR} & PR-negative & \multirow{2}{*}{PR-AUC} & 0.876 & 0.788 & $+0.101$ \\
+    &  & PR-positive &  & 0.959 & 0.811 & $+0.154$ \\
+    & \multirow{2}{*}{HER2} & HER2-negative & \multirow{2}{*}{PR-AUC} & 0.930 & 0.925 & $+0.005$ \\
+    &  & HER2-positive &  & 0.329 & 0.123 & $+0.626$ \\
+\midrule
+   \multirow{11}{*}{TransMIL} & \multirow{5}{*}{PAM50} & Basal-like & \multirow{5}{*}{F1} & 0.969 & 0.739 & $+0.237$ \\
+    &  & HER2-enriched &  & 0.912 & 0.000 & $+1.000$ \\
+    &  & Luminal A &  & 0.966 & 0.765 & $+0.208$ \\
+    &  & Luminal B &  & 0.902 & 0.317 & $+0.649$ \\
+    &  & Normal-like &  & 0.915 & 0.098 & $+0.893$ \\
+    & \multirow{2}{*}{ER} & ER-negative & \multirow{2}{*}{PR-AUC} & 0.859 & 0.763 & $+0.112$ \\
+    &  & ER-positive &  & 0.986 & 0.913 & $+0.074$ \\
+    & \multirow{2}{*}{PR} & PR-negative & \multirow{2}{*}{PR-AUC} & 0.969 & 0.741 & $+0.235$ \\
+    &  & PR-positive &  & 0.985 & 0.805 & $+0.183$ \\
+    & \multirow{2}{*}{HER2} & HER2-negative & \multirow{2}{*}{PR-AUC} & 0.904 & 0.904 & $+-0.000$ \\
+    &  & HER2-positive &  & 0.244 & 0.111 & $+0.545$ \\
+\bottomrule
+\end{tabular}
+\end{table}

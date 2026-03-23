@@ -1,0 +1,492 @@
+========================================
+TASK: PR  -  vie mar  6 19:39:00 CET 2026
+========================================
+
+----------------------------------------
+MIL: clam_mil_mb  |  Norm: macenko
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_clam_mil_mb/mil/00000-256_128_macenko_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     458
+1    1449
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.802917 0.197083             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.628295 0.371705             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.654176 0.345824             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.722822 0.277178             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.281663 0.718337             1            1
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.776233 0.223767             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.879488 0.120512             0            0
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.154750 0.845250             1            1
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.416626 0.583374             1            1
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.307658 0.692342             1            1
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.687
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)    80    87
+1(1)    28   172
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.48  0.52
+1(1)  0.14  0.86
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.741     0.479     0.582       167
+        1(1)      0.664     0.860     0.749       200
+
+    accuracy                          0.687       367
+   macro avg      0.702     0.670     0.666       367
+weighted avg      0.699     0.687     0.673       367
+
+PR-AUC por clase:
+  0(0): 0.733
+  1(1): 0.758
+PR-AUC macro: 0.746
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.826
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   277   199
+1(1)    54   920
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.58  0.42
+1(1)  0.06  0.94
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.837     0.582     0.686       476
+        1(1)      0.822     0.945     0.879       974
+
+    accuracy                          0.826      1450
+   macro avg      0.830     0.763     0.783      1450
+weighted avg      0.827     0.826     0.816      1450
+
+PR-AUC por clase:
+  0(0): 0.808
+  1(1): 0.918
+PR-AUC macro: 0.863
+
+
+----------------------------------------
+MIL: clam_mil_mb  |  Norm: none
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_clam_mil_mb/mil/00001-256_128_none_virchow2_clam_mil_mb_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     620
+1    1287
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.883470 0.116530             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.852193 0.147807             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.923248 0.076752             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.921258 0.078742             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.860715 0.139285             0            0
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.957828 0.042172             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.768385 0.231615             0            0
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.435160 0.564840             1            1
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.856192 0.143808             0            0
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.717088 0.282912             0            0
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.703
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   126    41
+1(1)    68   132
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.75  0.25
+1(1)  0.34  0.66
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.649     0.754     0.698       167
+        1(1)      0.763     0.660     0.708       200
+
+    accuracy                          0.703       367
+   macro avg      0.706     0.707     0.703       367
+weighted avg      0.711     0.703     0.703       367
+
+PR-AUC por clase:
+  0(0): 0.764
+  1(1): 0.822
+PR-AUC macro: 0.793
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.890
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   355   121
+1(1)    39   935
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.75  0.25
+1(1)  0.04  0.96
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.901     0.746     0.816       476
+        1(1)      0.885     0.960     0.921       974
+
+    accuracy                          0.890      1450
+   macro avg      0.893     0.853     0.869      1450
+weighted avg      0.891     0.890     0.887      1450
+
+PR-AUC por clase:
+  0(0): 0.901
+  1(1): 0.962
+PR-AUC macro: 0.931
+
+
+----------------------------------------
+MIL: dsmil  |  Norm: macenko
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_dsmil/mil/00000-256_128_macenko_virchow2_dsmil_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     627
+1    1280
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.936283 0.063717             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.770951 0.229050             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.994951 0.005049             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.764957 0.235043             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.829127 0.170873             0            0
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.864291 0.135709             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.203731 0.796269             1            1
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.538690 0.461310             0            0
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.959193 0.040807             0            0
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.519235 0.480765             0            0
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.700
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   112    55
+1(1)    55   145
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.67  0.33
+1(1)  0.28  0.72
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.671     0.671     0.671       167
+        1(1)      0.725     0.725     0.725       200
+
+    accuracy                          0.700       367
+   macro avg      0.698     0.698     0.698       367
+weighted avg      0.700     0.700     0.700       367
+
+PR-AUC por clase:
+  0(0): 0.771
+  1(1): 0.828
+PR-AUC macro: 0.799
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.861
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   353   123
+1(1)    78   896
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.74  0.26
+1(1)  0.08  0.92
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.819     0.742     0.778       476
+        1(1)      0.879     0.920     0.899       974
+
+    accuracy                          0.861      1450
+   macro avg      0.849     0.831     0.839      1450
+weighted avg      0.860     0.861     0.860      1450
+
+PR-AUC por clase:
+  0(0): 0.857
+  1(1): 0.943
+PR-AUC macro: 0.900
+
+
+----------------------------------------
+MIL: dsmil  |  Norm: none
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_dsmil/mil/00001-256_128_none_virchow2_dsmil_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     734
+1    1173
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.953877 0.046123             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.508543 0.491457             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.962638 0.037362             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.639085 0.360915             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.501413 0.498587             0            0
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.996924 0.003076             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.676511 0.323489             0            0
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.355768 0.644232             1            1
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.300618 0.699382             1            1
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.240301 0.759699             1            1
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.741
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   118    49
+1(1)    46   154
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.71  0.29
+1(1)  0.23  0.77
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.720     0.707     0.713       167
+        1(1)      0.759     0.770     0.764       200
+
+    accuracy                          0.741       367
+   macro avg      0.739     0.738     0.739       367
+weighted avg      0.741     0.741     0.741       367
+
+PR-AUC por clase:
+  0(0): 0.788
+  1(1): 0.811
+PR-AUC macro: 0.800
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.854
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   398    78
+1(1)   133   841
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.84  0.16
+1(1)  0.14  0.86
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.750     0.836     0.790       476
+        1(1)      0.915     0.863     0.889       974
+
+    accuracy                          0.854      1450
+   macro avg      0.832     0.850     0.840      1450
+weighted avg      0.861     0.854     0.856      1450
+
+PR-AUC por clase:
+  0(0): 0.876
+  1(1): 0.959
+PR-AUC macro: 0.917
+
+
+----------------------------------------
+MIL: transmil  |  Norm: macenko
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_transmil/mil/00000-256_128_macenko_virchow2_transmil_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     739
+1    1168
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.999735 0.000265             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.999179 0.000821             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.999820 0.000180             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.999823 0.000177             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.808381 0.191619             0            0
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.999888 0.000112             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.986713 0.013287             0            0
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.978481 0.021519             0            0
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.999187 0.000813             0            0
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.531442 0.468558             0            0
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.670
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   127    40
+1(1)    81   119
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.76  0.24
+1(1)  0.40  0.60
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.611     0.760     0.677       167
+        1(1)      0.748     0.595     0.663       200
+
+    accuracy                          0.670       367
+   macro avg      0.680     0.678     0.670       367
+weighted avg      0.686     0.670     0.669       367
+
+PR-AUC por clase:
+  0(0): 0.705
+  1(1): 0.757
+PR-AUC macro: 0.731
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.912
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   425    51
+1(1)    77   897
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.89  0.11
+1(1)  0.08  0.92
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.847     0.893     0.869       476
+        1(1)      0.946     0.921     0.933       974
+
+    accuracy                          0.912      1450
+   macro avg      0.896     0.907     0.901      1450
+weighted avg      0.914     0.912     0.912      1450
+
+PR-AUC por clase:
+  0(0): 0.954
+  1(1): 0.980
+PR-AUC macro: 0.967
+
+
+----------------------------------------
+MIL: transmil  |  Norm: none
+Model: /shared/home/jorgarcia/PathBench-MIL/experiments/brca_virchow2_test_pr_transmil/mil/00001-256_128_none_virchow2_transmil_CrossEntropyLoss_ReLU_Adam_1
+----------------------------------------
+
+=== Distribución de predicciones ===
+0     660
+1    1247
+
+Primeras filas:
+                                 slide  y_pred0  y_pred1  y_pred_class y_pred_label
+01BR001-0684a407-f446-486d-9160-b483cb 0.999752 0.000248             0            0
+01BR001-09b84012-cb83-4c2e-a33b-ebdb1b 0.999823 0.000178             0            0
+01BR001-17d55745-4ab3-4a80-a182-af938b 0.999835 0.000165             0            0
+01BR001-45196bfe-2f9f-41ff-beea-df78b6 0.999439 0.000561             0            0
+01BR001-4ffefc66-d0ba-4a36-b4fa-35bd91 0.386903 0.613097             1            1
+01BR001-52216745-06b5-4ac9-b8a8-a6924d 0.999908 0.000092             0            0
+01BR001-fe90ef44-d17c-4ff7-877d-2c7fcb 0.997709 0.002291             0            0
+01BR008-32269c0c-3ca2-4de1-b314-e9b07c 0.510016 0.489984             0            0
+01BR008-352b41b1-f229-45ff-8a6f-fc1e83 0.997130 0.002870             0            0
+01BR008-6c59aee1-e310-476f-a15f-d42cb0 0.564826 0.435174             0            0
+
+============================================================
+Dataset: cptac  |  slides: 367  |  accuracy: 0.643
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   130    37
+1(1)    94   106
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.78  0.22
+1(1)  0.47  0.53
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.580     0.778     0.665       167
+        1(1)      0.741     0.530     0.618       200
+
+    accuracy                          0.643       367
+   macro avg      0.661     0.654     0.642       367
+weighted avg      0.668     0.643     0.639       367
+
+PR-AUC por clase:
+  0(0): 0.741
+  1(1): 0.805
+PR-AUC macro: 0.773
+
+============================================================
+Dataset: tcga  |  slides: 1450  |  accuracy: 0.936
+============================================================
+
+Confusion Matrix (filas=real, columnas=predicho):
+      0(0)  1(1)
+0(0)   394    82
+1(1)    11   963
+
+Normalizada por fila (recall):
+      0(0)  1(1)
+0(0)  0.83  0.17
+1(1)  0.01  0.99
+
+Classification Report:
+              precision    recall  f1-score   support
+
+        0(0)      0.973     0.828     0.894       476
+        1(1)      0.922     0.989     0.954       974
+
+    accuracy                          0.936      1450
+   macro avg      0.947     0.908     0.924      1450
+weighted avg      0.938     0.936     0.934      1450
+
+PR-AUC por clase:
+  0(0): 0.969
+  1(1): 0.985
+PR-AUC macro: 0.977
+
+
+========================================
+DONE: vie mar  6 19:42:25 CET 2026

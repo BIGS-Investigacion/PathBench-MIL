@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Visualización de los cuatro análisis univariantes:
-  RPD ~ δn    (variabilidad de tinción)
+  RPD ~ Δn    (variabilidad de tinción)
   RPD ~ Δp    (desplazamiento de prevalencia)
   RPD ~ d     (distancia en espacio de embeddings)
   RPD ~ B̃_c  (separabilidad morfológica)
@@ -197,7 +197,7 @@ def main():
     x_d,   y_d,   t_d,   c_d   = _select('dist')
     x_bs,  y_bs,  t_bs,  c_bs  = _select('bs')
 
-    # Para δn ~ B̃_c necesitamos filas con ambos campos
+    # Para Δn ~ B̃_c necesitamos filas con ambos campos
     dn_bs_records = [(r['bs'], r['delta_n'], r['task'], r['cls_id'])
                      for r in records if r['bs'] is not None]
     x_dn_bs = [s[0] for s in dn_bs_records]
@@ -256,7 +256,7 @@ def main():
         print(f'Figura guardada en {out}', file=sys.stderr)
     plt.close(fig)
 
-    # ── Figura adicional: δn ~ B̃_c ───────────────────────────────────────────
+    # ── Figura adicional: Δn ~ B̃_c ───────────────────────────────────────────
     fig2, ax2 = plt.subplots(figsize=(6, 5))
     fig2.subplots_adjust(bottom=0.18)
 

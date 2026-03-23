@@ -1,0 +1,10 @@
+section,predictor,r_pearson,rho_spearman,p_rho,bh_sig_rho,r2,beta,p_ols,bh_sig_ols,mv_beta,mv_se,mv_t,mv_p,vif
+univariate,delta_n,0.6918,0.6727,0.0233,True,0.4786,6.1598,0.0183,True,,,,,
+univariate,d_c,0.7594,0.7545,0.0073,True,0.5767,10.1097,0.0067,True,,,,,
+univariate,b_tilde,-0.6512,-0.5727,0.0655,False,0.424,-0.2044,0.03,True,,,,,
+univariate,delta_p,-0.1711,-0.1091,0.7495,False,0.0293,-0.4493,0.6149,False,,,,,
+multivariate,delta_n,,,,,0.8003,,,,4.4456,1.4857,2.9922,0.0173,
+multivariate,d_c,,,,,,,,,7.9728,2.2215,3.589,0.0071,
+collinearity,delta_n~d_c,0.3215,0.4545,0.1601,False,,,,,,,,,1.1153
+collinearity,delta_n~b_tilde,-0.6394,-0.6909,0.0186,False,,,,,,,,,1.6914
+collinearity,d_c~b_tilde,-0.5831,-0.4818,0.1334,False,,,,,,,,,1.5151

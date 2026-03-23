@@ -1,0 +1,55 @@
+\begin{table}[htbp]
+\centering
+\caption{Effect of stain normalisation on per-class performance by MIL technique. Scores evaluated on CPTAC (external test set).}
+\label{tab:stain-norm-detailed}
+\begin{tabular}{lllrrr}
+\toprule
+\textbf{MIL} & \textbf{Task} & \textbf{Class} & \textbf{None} & \textbf{Macenko} & $\Delta n$ \\
+\midrule
+  \multirow{11}{*}{CLAM-MB} & \multirow{5}{*}{PAM50} & Basal-like & 0.693 & 0.682 & $-0.011$ \\
+    &   & HER2-enriched & 0.000 & 0.000 & $+0.000$ \\
+    &   & Luminal A & 0.732 & 0.740 & $+0.008$ \\
+    &   & Luminal B & 0.200 & 0.386 & $+0.186$ \\
+    &   & Normal-like & 0.000 & 0.103 & $+0.103$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{ER} & ER-negative & 0.698 & 0.733 & $+0.035$ \\
+    &   & ER-positive & 0.881 & 0.911 & $+0.030$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{PR} & PR-negative & 0.764 & 0.733 & $-0.031$ \\
+    &   & PR-positive & 0.822 & 0.758 & $-0.064$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{HER2} & HER2-negative & 0.925 & 0.933 & $+0.008$ \\
+    &   & HER2-positive & 0.176 & 0.234 & $+0.058$ \\
+\midrule
+  \multirow{11}{*}{DSMIL} & \multirow{5}{*}{PAM50} & Basal-like & 0.633 & 0.694 & $+0.061$ \\
+    &   & HER2-enriched & 0.000 & 0.000 & $+0.000$ \\
+    &   & Luminal A & 0.745 & 0.732 & $-0.013$ \\
+    &   & Luminal B & 0.242 & 0.246 & $+0.004$ \\
+    &   & Normal-like & 0.062 & 0.160 & $+0.098$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{ER} & ER-negative & 0.713 & 0.685 & $-0.028$ \\
+    &   & ER-positive & 0.854 & 0.873 & $+0.019$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{PR} & PR-negative & 0.788 & 0.771 & $-0.017$ \\
+    &   & PR-positive & 0.811 & 0.828 & $+0.017$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{HER2} & HER2-negative & 0.925 & 0.917 & $-0.008$ \\
+    &   & HER2-positive & 0.123 & 0.140 & $+0.017$ \\
+\midrule
+  \multirow{11}{*}{TransMIL} & \multirow{5}{*}{PAM50} & Basal-like & 0.739 & 0.735 & $-0.004$ \\
+    &   & HER2-enriched & 0.000 & 0.000 & $+0.000$ \\
+    &   & Luminal A & 0.765 & 0.710 & $-0.055$ \\
+    &   & Luminal B & 0.317 & 0.329 & $+0.012$ \\
+    &   & Normal-like & 0.098 & 0.080 & $-0.018$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{ER} & ER-negative & 0.763 & 0.598 & $-0.165$ \\
+    &   & ER-positive & 0.913 & 0.751 & $-0.162$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{PR} & PR-negative & 0.741 & 0.705 & $-0.036$ \\
+    &   & PR-positive & 0.805 & 0.757 & $-0.048$ \\
+\cmidrule{2-6}
+    & \multirow{2}{*}{HER2} & HER2-negative & 0.904 & 0.923 & $+0.019$ \\
+    &   & HER2-positive & 0.111 & 0.141 & $+0.030$ \\
+\bottomrule
+\end{tabular}
+\end{table}

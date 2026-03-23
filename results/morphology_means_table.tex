@@ -1,0 +1,38 @@
+\begin{table}[htbp]
+\tiny
+\centering
+\caption{Mean histomorphological feature values for TCGA-BRCA and CPTAC-BRCA patches ($n=25$ patches per class per cohort). Values are means of the two pathologists\textquotesingle\ scores; when one score was missing, the other\textquotesingle s value was used.}
+\label{tab:both-cohorts-means}
+\begin{tabular}{lllcccccc}
+\toprule
+\textbf{Task} & \textbf{Class} & \textbf{Cohort} & \textbf{Tubule} & \textbf{Nuclear} & \textbf{Mitotic} & \textbf{Tumour} & \textbf{Lymphocytic} & \textbf{PMN} \\
+\textbf{} & \textbf{} & \textbf{} & \textbf{Formation} & \textbf{Pleomorphism} & \textbf{Activity} & \textbf{Necrosis} & \textbf{Infiltration} & \textbf{Infiltration} \\
+\midrule
+ \multirow{10}{*}{PAM50} & \multirow{2}{*}{Basal-like} & CPTAC & 2.76 & 2.14 & 0.48 & 0.46 & 0.98 & 0.60 \\
+  &  & TCGA & 2.72 & 2.88 & 0.58 & 0.56 & 0.54 & 0.78 \\
+   & \multirow{2}{*}{HER2-enriched} & CPTAC & 2.76 & 1.96 & 0.60 & 0.48 & 0.76 & 0.52 \\
+  &  & TCGA & 2.82 & 2.78 & 0.38 & 0.48 & 0.96 & 0.72 \\
+   & \multirow{2}{*}{Luminal A} & CPTAC & 2.14 & 1.42 & 0.02 & 0.36 & 0.50 & 0.06 \\
+  &  & TCGA & 1.64 & 1.52 & 0.12 & 0.00 & 0.56 & 0.12 \\
+   & \multirow{2}{*}{Luminal B} & CPTAC & 2.38 & 1.76 & 0.26 & 0.12 & 0.88 & 0.32 \\
+  &  & TCGA & 2.20 & 2.26 & 0.28 & 0.10 & 0.80 & 0.22 \\
+   & \multirow{2}{*}{Normal-like} & CPTAC & 2.62 & 1.96 & 0.28 & 0.26 & 0.80 & 0.32 \\
+  &  & TCGA & 1.36 & 1.34 & 0.00 & 0.00 & 0.80 & 0.04 \\
+\midrule
+ \multirow{4}{*}{ER} & \multirow{2}{*}{ER-negative} & CPTAC & 2.80 & 2.66 & 0.68 & 0.44 & 0.86 & 0.54 \\
+  &  & TCGA & 2.72 & 2.60 & 0.30 & 0.54 & 0.62 & 0.76 \\
+   & \multirow{2}{*}{ER-positive} & CPTAC & 2.44 & 1.94 & 0.26 & 0.24 & 0.90 & 0.24 \\
+  &  & TCGA & 2.40 & 2.20 & 0.12 & 0.06 & 0.94 & 0.26 \\
+\midrule
+ \multirow{4}{*}{PR} & \multirow{2}{*}{PR-negative} & CPTAC & 2.68 & 2.10 & 0.44 & 0.44 & 0.84 & 0.56 \\
+  &  & TCGA & 2.72 & 2.50 & 0.36 & 0.72 & 0.66 & 0.78 \\
+   & \multirow{2}{*}{PR-positive} & CPTAC & 2.42 & 1.72 & 0.16 & 0.22 & 0.84 & 0.38 \\
+  &  & TCGA & 2.34 & 1.90 & 0.08 & 0.12 & 0.64 & 0.32 \\
+\midrule
+ \multirow{4}{*}{HER2} & \multirow{2}{*}{HER2-negative} & CPTAC & 2.58 & 1.86 & 0.30 & 0.26 & 0.94 & 0.48 \\
+  &  & TCGA & 2.50 & 2.36 & 0.24 & 0.16 & 0.48 & 0.34 \\
+   & \multirow{2}{*}{HER2-positive} & CPTAC & 2.58 & 2.22 & 0.38 & 0.34 & 0.82 & 0.46 \\
+  &  & TCGA & 2.62 & 2.78 & 0.28 & 0.36 & 0.56 & 0.44 \\
+\bottomrule
+\end{tabular}
+\end{table}
