@@ -5,8 +5,13 @@ scripts/generate_figures.py
 Generates all figures for the paper from results/per_class_metrics.csv.
 
 Figures produced:
-    results/figures/barplot_{task}.eps      — per-task bar chart (TCGA vs CPTAC)
+    results/figures/barplot_{task}.eps      — per-task bar chart (one panel per class)
     results/figures/barplot_all.{eps,png}   — combined figure (all tasks)
+
+Layout:
+    Each panel = one class/label.
+    X-axis within each panel = datasets (TCGA, CPTAC).
+    Bars within each dataset = MIL models.
 
 Usage:
     python scripts/generate_figures.py \\
@@ -97,9 +102,9 @@ def get_value(df: pd.DataFrame, task: str, mil: str, cls_id: int, col: str) -> f
     return float(row[col].iloc[0]) if len(row) else 0.0
 
 
-def _style_ax(ax, x_labels, metric_lbl):
-    ax.set_xticks(range(len(x_labels)))
-    ax.set_xticklabels(x_labels, fontsize=8)
+def _style_ax(ax, metric_lbl):
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(['TCGA', 'CPTAC'], fontsize=9)
     ax.set_ylabel(metric_lbl, fontsize=9)
     ax.set_ylim(0, 1.15)
     ax.yaxis.grid(True, linestyle='--', alpha=0.5, color='#E8A0B4')
@@ -109,13 +114,19 @@ def _style_ax(ax, x_labels, metric_lbl):
         spine.set_edgecolor('#C47A9A')
 
 
-def _fill_ax(ax, df: pd.DataFrame, task: str, classes: list,
-             x_labels: list, col: str, title: str, fontsize_val: float = 5.5):
+def _fill_ax(ax, df: pd.DataFrame, task: str, cls_id: int,
+             title: str, fontsize_val: float = 5.5):
+    """
+    Fill a single axis for one class.
+    X-axis: [TCGA, CPTAC].  Bars: MIL models.
+    """
+    cols = ['none_tcga', 'none_cptac']
     width = 0.18
-    x = np.arange(len(classes))
+    x = np.arange(2)
+
     for i, mil in enumerate(ALL_MODELS):
         values = []
-        for cls_id in classes:
+        for col in cols:
             if mil == 'clam_noopt':
                 tcga_v, cptac_v = CLAM_NOOPT.get((task, cls_id), (0.0, 0.0))
                 val = tcga_v if col == 'none_tcga' else cptac_v
@@ -134,8 +145,8 @@ def _fill_ax(ax, df: pd.DataFrame, task: str, classes: list,
                     fontsize=fontsize_val,
                     color='#333333' if mil == 'clam_noopt' else '#4A0020')
 
-    ax.set_title(title, fontsize=10, color='#8B1A4A')
-    _style_ax(ax, x_labels, METRIC_LABEL[task])
+    ax.set_title(title, fontsize=9, color='#8B1A4A')
+    _style_ax(ax, METRIC_LABEL[task])
 
 
 def _legend_patches():
@@ -150,28 +161,36 @@ def plot_per_task(df: pd.DataFrame, output_dir: Path) -> dict:
     """Generate one EPS per task; return figs_data for combined figure."""
     figs_data = {}
     for task in TASK_ORDER:
-        task_df  = df[df['task'] == task]
-        classes  = sorted(task_df['cls_id'].unique())
-        x_labels = [CLS_DISPLAY.get((task, c), str(c)) for c in classes]
+        task_df = df[df['task'] == task]
+        classes = sorted(task_df['cls_id'].unique())
+        n_cls   = len(classes)
 
-        fig, axes = plt.subplots(1, 2, figsize=(max(9, len(classes) * 2.4), 5),
-                                 sharey=False)
-        _fill_ax(axes[0], df, task, classes, x_labels, 'none_tcga',
-                 'TCGA (train)', fontsize_val=6)
-        _fill_ax(axes[1], df, task, classes, x_labels, 'none_cptac',
-                 'CPTAC (test)', fontsize_val=6)
+        fig, axes = plt.subplots(1, n_cls,
+                                 figsize=(max(6, n_cls * 3.2), 5),
+                                 sharey=True)
+        if n_cls == 1:
+            axes = [axes]
 
+        for ax, cls_id in zip(axes, classes):
+            label = CLS_DISPLAY.get((task, cls_id), str(cls_id))
+            _fill_ax(ax, df, task, cls_id, title=label, fontsize_val=6)
+
+        axes[0].set_ylabel(METRIC_LABEL[task], fontsize=10)
+        for ax in axes[1:]:
+            ax.set_ylabel('')
+
+        fig.suptitle(TASK_DISPLAY[task], fontsize=12, color='#8B1A4A', y=1.02)
         fig.legend(handles=_legend_patches(), loc='lower center', ncol=4,
                    fontsize=10, framealpha=0.8,
-                   bbox_to_anchor=(0.5, -0.06), edgecolor='#C47A9A')
-        plt.tight_layout(rect=[0, 0.08, 1, 1])
+                   bbox_to_anchor=(0.5, -0.08), edgecolor='#C47A9A')
+        plt.tight_layout(rect=[0, 0.10, 1, 1])
 
         out = output_dir / f'barplot_{task}.eps'
         fig.savefig(out, format='eps', bbox_inches='tight', facecolor='white')
         plt.close(fig)
         print(f'Saved → {out}')
 
-        figs_data[task] = (classes, x_labels)
+        figs_data[task] = classes
     return figs_data
 
 
@@ -180,47 +199,63 @@ def plot_per_task(df: pd.DataFrame, output_dir: Path) -> dict:
 def plot_combined(df: pd.DataFrame, figs_data: dict, output_dir: Path) -> None:
     """
     Combined figure:
-      Row 0 — PAM50: TCGA (cols 0-3) | CPTAC (cols 4-7)
-      Row 1 — ER (cols 0-1), PR (cols 3-4), HER2 (cols 6-7); cols 2,5 = spacers
+      Row 0 — PAM50: one panel per class (5 panels)
+      Row 1 — ER (2), PR (2), HER2 (2) with spacers between tasks
+    Each panel: x-axis = TCGA | CPTAC, bars = MIL models.
     """
-    fig_all = plt.figure(figsize=(20, 9))
-    gs = gridspec.GridSpec(2, 8, figure=fig_all,
-                           hspace=0.45, wspace=0.30,
-                           width_ratios=[2, 2, 0.5, 2, 2, 0.5, 2, 2])
+    fig = plt.figure(figsize=(20, 9))
 
-    # Row 0: PAM50
+    # Row 0: PAM50 (5 equal panels)
+    gs0 = gridspec.GridSpec(1, 5, figure=fig,
+                            left=0.05, right=0.97, top=0.93, bottom=0.54,
+                            wspace=0.30)
+
+    # Row 1: ER(2) | spacer | PR(2) | spacer | HER2(2)
+    gs1 = gridspec.GridSpec(1, 8, figure=fig,
+                            left=0.05, right=0.97, top=0.46, bottom=0.12,
+                            wspace=0.30,
+                            width_ratios=[2, 2, 0.6, 2, 2, 0.6, 2, 2])
+
+    binary_col_starts = {'er': 0, 'pr': 3, 'erbb2': 6}
+
+    # PAM50
     if 'pam50' in figs_data:
-        classes, x_labels = figs_data['pam50']
-        ax_t = fig_all.add_subplot(gs[0, :4])
-        ax_c = fig_all.add_subplot(gs[0, 4:])
-        _fill_ax(ax_t, df, 'pam50', classes, x_labels, 'none_tcga',
-                 f'{TASK_DISPLAY["pam50"]} — TCGA')
-        _fill_ax(ax_c, df, 'pam50', classes, x_labels, 'none_cptac',
-                 f'{TASK_DISPLAY["pam50"]} — CPTAC')
+        classes = figs_data['pam50']
+        for col, cls_id in enumerate(classes):
+            ax = fig.add_subplot(gs0[0, col])
+            label = CLS_DISPLAY.get(('pam50', cls_id), str(cls_id))
+            _fill_ax(ax, df, 'pam50', cls_id, title=label, fontsize_val=5.5)
+            if col > 0:
+                ax.set_ylabel('')
+        # Task label above row
+        fig.text(0.51, 0.96, 'PAM50', ha='center', va='bottom',
+                 fontsize=11, color='#8B1A4A', fontweight='bold')
 
-    # Row 1: ER, PR, HER2
-    binary_tasks  = ['er', 'pr', 'erbb2']
-    col_starts    = [0, 3, 6]
-    for task, col_start in zip(binary_tasks, col_starts):
+    # Binary tasks
+    task_label_x = {'er': 0.16, 'pr': 0.50, 'erbb2': 0.84}
+    for task, col_start in binary_col_starts.items():
         if task not in figs_data:
             continue
-        classes, x_labels = figs_data[task]
-        ax_t = fig_all.add_subplot(gs[1, col_start])
-        ax_c = fig_all.add_subplot(gs[1, col_start + 1])
-        _fill_ax(ax_t, df, task, classes, x_labels, 'none_tcga',
-                 f'{TASK_DISPLAY[task]} — TCGA')
-        _fill_ax(ax_c, df, task, classes, x_labels, 'none_cptac',
-                 f'{TASK_DISPLAY[task]} — CPTAC')
+        classes = figs_data[task]
+        for j, cls_id in enumerate(classes):
+            ax = fig.add_subplot(gs1[0, col_start + j])
+            label = CLS_DISPLAY.get((task, cls_id), str(cls_id))
+            _fill_ax(ax, df, task, cls_id, title=label, fontsize_val=5.5)
+            if j > 0:
+                ax.set_ylabel('')
+        fig.text(task_label_x[task], 0.49, TASK_DISPLAY[task],
+                 ha='center', va='bottom',
+                 fontsize=11, color='#8B1A4A', fontweight='bold')
 
-    fig_all.legend(handles=_legend_patches(), loc='lower center', ncol=4,
-                   fontsize=10, framealpha=0.8,
-                   bbox_to_anchor=(0.5, -0.02), edgecolor='#C47A9A')
+    fig.legend(handles=_legend_patches(), loc='lower center', ncol=4,
+               fontsize=10, framealpha=0.8,
+               bbox_to_anchor=(0.5, 0.01), edgecolor='#C47A9A')
 
     for ext in ('eps', 'png'):
         out = output_dir / f'barplot_all.{ext}'
-        fig_all.savefig(out, format=ext, bbox_inches='tight', facecolor='white')
+        fig.savefig(out, format=ext, bbox_inches='tight', facecolor='white')
         print(f'Saved → {out}')
-    plt.close(fig_all)
+    plt.close(fig)
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

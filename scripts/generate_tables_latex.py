@@ -77,7 +77,8 @@ def fmt_signed(v, decimals=3):
     """Format with explicit sign, NaN → '---'."""
     if isinstance(v, float) and np.isnan(v):
         return r'\text{---}'
-    sign = '+' if v >= 0 else ''
+    v = abs(v) if v == 0 else v  # avoid -0.000
+    sign = '' if v == 0 else ('+' if v > 0 else '')
     return f'${sign}{v:.{decimals}f}$'
 
 
@@ -405,7 +406,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Generate LaTeX tables from per_class_metrics.csv.')
     parser.add_argument('--metrics', default='results/per_class_metrics.csv')
-    parser.add_argument('--dist_dir', default='results/patch_intersection_all')
+    parser.add_argument('--dist_dir', default='results/patch_intersection_all_cosine')
     parser.add_argument('--out_dir', default='results')
     args = parser.parse_args()
 

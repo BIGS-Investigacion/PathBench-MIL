@@ -87,19 +87,23 @@ def load_data(metrics_csv: Path) -> pd.DataFrame:
 
 # ── BH correction ─────────────────────────────────────────────────────────────
 
-def bh_correct(pvals: list[float], alpha: float = 0.05) -> list[bool]:
-    """Benjamini-Hochberg correction. Returns array of rejected (significant) booleans."""
-    p = np.array(pvals)
+def bh_qvalues(pvals: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (q-values), monotone-enforced."""
+    p = np.array(pvals, dtype=float)
     n = len(p)
     order = np.argsort(p)
-    ranks = np.empty(n, dtype=int)
-    ranks[order] = np.arange(1, n + 1)
-    threshold = ranks / n * alpha
-    # a test is significant if all tests up to and including its rank are below threshold
-    cum_min = np.minimum.accumulate((p[order] / (np.arange(1, n + 1) / n))[::-1])[::-1]
-    rejected = np.zeros(n, dtype=bool)
-    rejected[order] = cum_min <= alpha
-    return rejected.tolist()
+    q = p[order] * n / (np.arange(1, n + 1))
+    # enforce monotonicity: q[i] = min(q[i:])
+    q = np.minimum.accumulate(q[::-1])[::-1]
+    q = np.clip(q, 0, 1)
+    result = np.empty(n)
+    result[order] = q
+    return result.tolist()
+
+
+def bh_correct(pvals: list[float], alpha: float = 0.05) -> list[bool]:
+    """Benjamini-Hochberg correction. Returns array of rejected (significant) booleans."""
+    return [q <= alpha for q in bh_qvalues(pvals)]
 
 
 def sig_marker(p: float, bh_sig: bool, bh_trend: bool = False) -> str:
@@ -154,40 +158,55 @@ def generate_stats_table(data: pd.DataFrame, output: Path) -> None:
 
     # BH within Spearman family
     spearman_ps = [u_dn['p_rho'], u_dc['p_rho'], u_bt['p_rho'], u_dp['p_rho']]
-    spearman_bh = bh_correct(spearman_ps)
+    spearman_qs = bh_qvalues(spearman_ps)
+    spearman_bh = [q <= 0.05 for q in spearman_qs]
 
     # BH within OLS family
     ols_ps = [u_dn['p_ols'], u_dc['p_ols'], u_bt['p_ols'], u_dp['p_ols']]
-    ols_bh = bh_correct(ols_ps)
+    ols_qs = bh_qvalues(ols_ps)
+    ols_bh = [q <= 0.05 for q in ols_qs]
 
-    def _univ_row(label, u, s_bh, o_bh, s_p, o_p):
-        s_sig = sig_marker(s_p, s_bh, s_p < 0.10)
-        o_sig = sig_marker(o_p, o_bh, o_p < 0.10)
+    def _univ_row(label, u, s_bh, o_bh, s_q, o_q):
+        s_sig = sig_marker(s_q, s_bh, s_q < 0.10)
+        o_sig = sig_marker(o_q, o_bh, o_q < 0.10)
         return (f"    {label} & ${fmt(u['r'], sign=True)}$ & ${fmt(u['rho'], sign=True)}$"
-                f" & {fmt(u['p_rho'])}{s_sig}"
+                f" & {fmt(s_q)}{s_sig}"
                 f" & ${fmt(u['r2'])}$ & ${fmt(u['beta'], sign=True)}$"
-                f" & {fmt(u['p_ols'])}{o_sig} \\\\")
+                f" & {fmt(o_q)}{o_sig} \\\\")
 
     univ_rows = [
-        _univ_row(r'$\Delta n$',       u_dn, spearman_bh[0], ols_bh[0], spearman_ps[0], ols_ps[0]),
-        _univ_row(r'$d_c$',            u_dc, spearman_bh[1], ols_bh[1], spearman_ps[1], ols_ps[1]),
-        _univ_row(r'$\tilde{B}_c$',    u_bt, spearman_bh[2], ols_bh[2], spearman_ps[2], ols_ps[2]),
-        _univ_row(r'$\Delta p$',       u_dp, spearman_bh[3], ols_bh[3], spearman_ps[3], ols_ps[3]),
+        _univ_row(r'$\Delta n$',       u_dn, spearman_bh[0], ols_bh[0], spearman_qs[0], ols_qs[0]),
+        _univ_row(r'$d$',            u_dc, spearman_bh[1], ols_bh[1], spearman_qs[1], ols_qs[1]),
+        _univ_row(r'$\tilde{B}$',    u_bt, spearman_bh[2], ols_bh[2], spearman_qs[2], ols_qs[2]),
+        _univ_row(r'$\Delta p$',       u_dp, spearman_bh[3], ols_bh[3], spearman_qs[3], ols_qs[3]),
     ]
 
-    # ── Multivariate model: RPD ~ Δn + d_c ───────────────────────────────────
-    mv = multivariate_ols(rpd, delta_n, d_c)
+    # ── Multivariate model: RPD ~ Δn + d_c (parsimonious) ───────────────────
+    mv    = multivariate_ols(rpd, delta_n, d_c)
+    mv_dc = multivariate_ols(rpd, d_c)       # without Δn → ΔR²(Δn)
+    mv_dn = multivariate_ols(rpd, delta_n)   # without d_c → ΔR²(d_c)
+    dr2_dn = mv.rsquared - mv_dc.rsquared
+    dr2_dc = mv.rsquared - mv_dn.rsquared
     mv_ps   = [mv.f_pvalue, mv.pvalues[1], mv.pvalues[2]]
-    mv_bh   = bh_correct(mv_ps)
-    f_sig   = sig_marker(mv.f_pvalue,    mv_bh[0], mv.f_pvalue    < 0.10)
-    dn_sig  = sig_marker(mv.pvalues[1],  mv_bh[1], mv.pvalues[1]  < 0.10)
-    dc_sig  = sig_marker(mv.pvalues[2],  mv_bh[2], mv.pvalues[2]  < 0.10)
+    mv_qs   = bh_qvalues(mv_ps)
+    mv_bh   = [q <= 0.05 for q in mv_qs]
+    f_sig   = sig_marker(mv_qs[0], mv_bh[0], mv_qs[0] < 0.10)
+    dn_sig  = sig_marker(mv_qs[1], mv_bh[1], mv_qs[1] < 0.10)
+    dc_sig  = sig_marker(mv_qs[2], mv_bh[2], mv_qs[2] < 0.10)
+
+    # ── Trivariate model: RPD ~ Δn + d_c + B̃_c (to show B̃_c exclusion) ─────
+    mv3 = multivariate_ols(rpd, delta_n, d_c, b_tilde)
+    mv3_ps  = [mv3.f_pvalue, mv3.pvalues[1], mv3.pvalues[2], mv3.pvalues[3]]
+    mv3_qs  = bh_qvalues(mv3_ps)
+    mv3_bh  = [q <= 0.05 for q in mv3_qs]
+    bt_sig  = sig_marker(mv3_qs[3], mv3_bh[3], mv3_qs[3] < 0.10)
+    dr2_bt  = mv3.rsquared - mv.rsquared
 
     # ── Collinearity ──────────────────────────────────────────────────────────
     pairs = [
-        (r'$\Delta n \sim d_c$',           delta_n, d_c),
-        (r'$\Delta n \sim \tilde{B}_c$',   delta_n, b_tilde),
-        (r'$d_c \sim \tilde{B}_c$',        d_c,     b_tilde),
+        (r'$\Delta n \sim d$',             delta_n, d_c),
+        (r'$\Delta n \sim \tilde{B}$',     delta_n, b_tilde),
+        (r'$d \sim \tilde{B}$',            d_c,     b_tilde),
     ]
     coll_stats = []
     for lbl, x, y in pairs:
@@ -197,15 +216,16 @@ def generate_stats_table(data: pd.DataFrame, output: Path) -> None:
         coll_stats.append(dict(label=lbl, r=r_p, rho=rho_p, p_rho=p_p, vif=vif))
 
     coll_ps = [c['p_rho'] for c in coll_stats]
-    coll_bh = bh_correct(coll_ps)
+    coll_qs = bh_qvalues(coll_ps)
+    coll_bh = [q <= 0.05 for q in coll_qs]
 
-    def _coll_row(c, bh):
-        s_sig = sig_marker(c['p_rho'], bh, c['p_rho'] < 0.10)
+    def _coll_row(c, bh, q):
+        s_sig = sig_marker(q, bh, q < 0.10)
         return (f"    {c['label']} & ${fmt(c['r'], sign=True)}$"
-                f" & ${fmt(c['rho'], sign=True)}$ & {fmt(c['p_rho'])}{s_sig}"
+                f" & ${fmt(c['rho'], sign=True)}$ & {fmt(q)}{s_sig}"
                 f" & ${fmt(c['vif'])}$ & \\\\")
 
-    coll_rows = [_coll_row(c, bh) for c, bh in zip(coll_stats, coll_bh)]
+    coll_rows = [_coll_row(c, bh, q) for c, bh, q in zip(coll_stats, coll_bh, coll_qs)]
 
     # ── Build LaTeX ───────────────────────────────────────────────────────────
     n = len(data)
@@ -225,15 +245,16 @@ def generate_stats_table(data: pd.DataFrame, output: Path) -> None:
          r'($\alpha=0.05$) separately within each section '
          r'(univariate Spearman tests, univariate OLS slope tests, multivariate model, '
          r'collinearity tests). '
-         r'$^{*}$BH-significant ($q<0.05$), $^{\dagger}p<0.10$.}'),
+         r'All reported $p$-values are BH-adjusted ($q$-values). '
+         r'$^{*}$BH-significant ($q<0.05$), $^{\dagger}q<0.10$.}'),
         r'\label{tab:regression-models}',
         r'\small',
         r'\begin{tabular}{lcccccc}',
         r'\toprule\toprule',
         r'\multicolumn{7}{l}{\textit{Univariate Models}} \\',
         r'\midrule',
-        (r'\textbf{Model} & \textbf{$r$} & \textbf{$\rho$} & \textbf{$p(\rho)$}'
-         r' & \textbf{$R^2$} & \textbf{$\beta$} & \textbf{$p$-value} \\'),
+        (r'\textbf{Model} & \textbf{$r$} & \textbf{$\rho$} & \textbf{$q(\rho)$}'
+         r' & \textbf{$R^2$} & \textbf{$\beta$} & \textbf{$q$-value} \\'),
         r'\midrule',
     ]
     lines += univ_rows
@@ -242,26 +263,36 @@ def generate_stats_table(data: pd.DataFrame, output: Path) -> None:
         r'\multicolumn{7}{l}{\textit{Multivariate Model}} \\',
         r'\midrule',
         (r'\textbf{Model} & \multicolumn{2}{c}{} & \textbf{$R^2$}'
-         r' & \textbf{Adj.\ $R^2$} & \textbf{$F$-stat} & \textbf{$p$-value} \\'),
+         r' & \textbf{Adj.\ $R^2$} & \textbf{$F$-stat} & \textbf{$q$-value} \\'),
         r'\midrule',
         (f'    RPD $\\sim \\Delta n + d_c$ & \\multicolumn{{2}}{{c}}{{---}}'
          f' & ${fmt(mv.rsquared)}$ & ${fmt(mv.rsquared_adj)}$'
-         f' & ${fmt(mv.fvalue, 2)}$ & {fmt(mv.f_pvalue, 3)}{f_sig} \\\\'),
+         f' & ${fmt(mv.fvalue, 2)}$ & {fmt(mv_qs[0], 3)}{f_sig} \\\\'),
         r'\midrule',
         (r' & \textbf{$\beta$} & \textbf{Std Error} & \textbf{$t$-value}'
-         r' & \textbf{$p$-value} & \multicolumn{2}{l}{} \\'),
+         r' & \textbf{$q$-value} & \textbf{$\Delta R^2$} & \multicolumn{1}{l}{} \\'),
         r'\midrule',
         (f'    $\\Delta n$ & ${fmt(mv.params[1], 4, sign=True)}$'
          f' & ${fmt(mv.bse[1], 4)}$ & ${fmt(mv.tvalues[1], 3, sign=True)}$'
-         f' & {fmt(mv.pvalues[1], 3)}{dn_sig} & \\\\'),
+         f' & {fmt(mv_qs[1], 3)}{dn_sig} & ${fmt(dr2_dn, 3)}$ \\\\'),
         (f'    $d_c$ & ${fmt(mv.params[2], 4, sign=True)}$'
          f' & ${fmt(mv.bse[2], 4)}$ & ${fmt(mv.tvalues[2], 3, sign=True)}$'
-         f' & {fmt(mv.pvalues[2], 3)}{dc_sig} & \\\\'),
+         f' & {fmt(mv_qs[2], 3)}{dc_sig} & ${fmt(dr2_dc, 3)}$ \\\\'),
+        r'\midrule',
+        (r'\multicolumn{7}{l}{\textit{Excluded predictor (full model RPD $\sim \Delta n + d_c + \tilde{B}_c$)}} \\'),
+        r'\midrule',
+        (r' & \textbf{$\beta$} & \textbf{Std Error} & \textbf{$t$-value}'
+         r' & \textbf{$q$-value} & \textbf{$\Delta R^2$} & \multicolumn{1}{l}{} \\'),
+        r'\midrule',
+        (f'    $\\tilde{{B}}_c$ & ${fmt(mv3.params[3], 4, sign=True)}$'
+         f' & ${fmt(mv3.bse[3], 4)}$ & ${fmt(mv3.tvalues[3], 3, sign=True)}$'
+         f' & {fmt(mv3_qs[3], 3)}{bt_sig}'
+         f' & ${fmt(dr2_bt, 3)}$ \\\\'),
         r'\midrule',
         r'\multicolumn{7}{l}{\textit{Predictor Collinearity}} \\',
         r'\midrule',
         (r'\textbf{Pair} & \textbf{Pearson $r$} & \textbf{Spearman $\rho$}'
-         r' & \textbf{$p(\rho)$} & \textbf{VIF} & \multicolumn{2}{l}{} \\'),
+         r' & \textbf{$q(\rho)$} & \textbf{VIF} & \multicolumn{2}{l}{} \\'),
         r'\midrule',
     ]
     lines += coll_rows
@@ -293,7 +324,9 @@ def _regression_band(x, y, x_line):
 
 
 def _scatter_panel(ax, data: pd.DataFrame, x_col: str, y_col: str,
-                   xlabel: str, ylabel: str = 'RPD', show_ci: bool = True):
+                   xlabel: str, ylabel: str = 'RPD', show_ci: bool = True,
+                   q_ols: float = None, q_rho: float = None):
+    """q_ols and q_rho are BH-adjusted q-values; if None, raw p-values are used."""
     sub = data.dropna(subset=[x_col, y_col])
     x = sub[x_col].values
     y = sub[y_col].values
@@ -302,6 +335,9 @@ def _scatter_panel(ax, data: pd.DataFrame, x_col: str, y_col: str,
                          x.max() + 0.05 * np.ptp(x), 200)
     y_line, ci_low, ci_high, slope, intercept, r2, p_ols, rho, p_rho = \
         _regression_band(x, y, x_line)
+
+    q_ols = q_ols if q_ols is not None else p_ols
+    q_rho = q_rho if q_rho is not None else p_rho
 
     if show_ci:
         ax.fill_between(x_line, ci_low, ci_high, alpha=0.15, color='grey')
@@ -318,12 +354,9 @@ def _scatter_panel(ax, data: pd.DataFrame, x_col: str, y_col: str,
         ax.annotate(label, (xi, yi), textcoords='offset points',
                     xytext=(5, 4), fontsize=7.5, color=color)
 
-    sig_ols = '***' if p_ols < 0.001 else ('**' if p_ols < 0.01 else
-               ('*' if p_ols < 0.05 else 'ns'))
-    sig_rho = '***' if p_rho < 0.001 else ('**' if p_rho < 0.01 else
-               ('*' if p_rho < 0.05 else 'ns'))
-    stat_text = (f'$R^2={r2:.3f}$, $p_{{OLS}}={p_ols:.3f}$ ({sig_ols})\n'
-                 f'$\\rho={rho:+.3f}$, $p_\\rho={p_rho:.3f}$ ({sig_rho})')
+    def _sig(q): return '***' if q < 0.001 else ('**' if q < 0.01 else ('*' if q < 0.05 else 'ns'))
+    stat_text = (f'$R^2={r2:.3f}$, $q_{{OLS}}={q_ols:.3f}$ ({_sig(q_ols)})\n'
+                 f'$\\rho={rho:+.3f}$, $q_\\rho={q_rho:.3f}$ ({_sig(q_rho)})')
     ax.text(0.03, 0.97, stat_text, transform=ax.transAxes,
             va='top', ha='left', fontsize=8,
             bbox=dict(boxstyle='round,pad=0.3', fc='white', alpha=0.7, ec='lightgrey'))
@@ -352,11 +385,21 @@ def plot_univariates(data: pd.DataFrame, figures_dir: Path) -> None:
         ('b_tilde', r'$\tilde{B}_c$ (morphological separability)', True),
     ]
 
+    # BH correction across all 4 univariate tests (OLS and Spearman separately)
+    cols = [p[0] for p in panels]
+    ols_ps = [univariate_stats(data.dropna(subset=[c])[c].values,
+                               data.dropna(subset=[c])['rpd'].values)['p_ols'] for c in cols]
+    rho_ps = [univariate_stats(data.dropna(subset=[c])[c].values,
+                               data.dropna(subset=[c])['rpd'].values)['p_rho'] for c in cols]
+    ols_qs = bh_qvalues(ols_ps)
+    rho_qs = bh_qvalues(rho_ps)
+
     fig, axes = plt.subplots(2, 2, figsize=(11, 9))
     fig.subplots_adjust(hspace=0.38, wspace=0.32)
 
-    for ax, (col, xlabel, show_ci) in zip(axes.flat, panels):
-        _scatter_panel(ax, data, col, 'rpd', xlabel=xlabel, show_ci=show_ci)
+    for ax, (col, xlabel, show_ci), q_ols, q_rho in zip(axes.flat, panels, ols_qs, rho_qs):
+        _scatter_panel(ax, data, col, 'rpd', xlabel=xlabel, show_ci=show_ci,
+                       q_ols=q_ols, q_rho=q_rho)
 
     fig.legend(handles=_legend_handles(), title='Task',
                loc='lower center', ncol=4, fontsize=9,
@@ -370,17 +413,33 @@ def plot_univariates(data: pd.DataFrame, figures_dir: Path) -> None:
 
 
 def plot_collinearity(data: pd.DataFrame, figures_dir: Path) -> None:
+    # BH correction across all 3 collinearity pairs (Spearman); show 2 panels
+    coll_pairs = [
+        ('b_tilde', 'delta_n'),
+        ('b_tilde', 'd_c'),
+        ('delta_n', 'd_c'),
+    ]
+    rho_ps = []
+    ols_ps = []
+    for xc, yc in coll_pairs:
+        sub = data.dropna(subset=[xc, yc])
+        u = univariate_stats(sub[xc].values, sub[yc].values)
+        rho_ps.append(u['p_rho'])
+        ols_ps.append(u['p_ols'])
+    rho_qs = bh_qvalues(rho_ps)
+    ols_qs = bh_qvalues(ols_ps)
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
     fig.subplots_adjust(wspace=0.35, bottom=0.18)
 
     _scatter_panel(ax1, data, 'b_tilde', 'delta_n',
                    xlabel=r'$\tilde{B}_c$ (morphological separability)',
                    ylabel=r'$\Delta n$ (Macenko gain on CPTAC)',
-                   show_ci=True)
+                   show_ci=True, q_ols=ols_qs[0], q_rho=rho_qs[0])
     _scatter_panel(ax2, data, 'b_tilde', 'd_c',
                    xlabel=r'$\tilde{B}_c$ (morphological separability)',
                    ylabel=r'$d_c$ (cosine centroid distance)',
-                   show_ci=True)
+                   show_ci=True, q_ols=ols_qs[1], q_rho=rho_qs[1])
 
     fig.legend(handles=_legend_handles(), title='Task',
                loc='lower center', ncol=4, fontsize=9,

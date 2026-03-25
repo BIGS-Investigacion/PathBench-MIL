@@ -20,7 +20,7 @@ import pandas as pd
 from pathlib import Path
 from sklearn.metrics import cohen_kappa_score
 
-RESULTS = Path(__file__).resolve().parent.parent / 'results'
+RESULTS = Path(__file__).resolve().parent.parent.parent / 'results'
 
 ORDINAL = {
     'ESTRUCTURA GLANDULAR': 'Tubule Formation',

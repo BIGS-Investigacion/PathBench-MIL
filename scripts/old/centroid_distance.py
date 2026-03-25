@@ -8,7 +8,7 @@ Algorithm:
      Compute the class centroid as the mean of those patches.
   3. From the global pool of top-K patches per class, find the N patches
      closest to the centroid (default N=25) and save them as JPEG images.
-  4. Compute d_c = ||μ_c^A − μ_c^B||₂ between the two datasets.
+  4. Compute d_c = 1 − cos(μ_c^A, μ_c^B) between the two datasets.
 
 Usage:
     python scripts/centroid_distance.py \
@@ -303,7 +303,8 @@ def main():
 
         mu_a = pool_a["embs"][sel_a].mean(axis=0)
         mu_b = pool_b["embs"][sel_b].mean(axis=0)
-        dist = float(np.linalg.norm(mu_a - mu_b))
+        cos_sim = np.dot(mu_a, mu_b) / (np.linalg.norm(mu_a) * np.linalg.norm(mu_b))
+        dist = float(1.0 - cos_sim)
 
         print(f"{class_name:<12} {len(sel_a):>11}  {len(sel_b):>11}  {dist:>12.4f}")
         rows.append({

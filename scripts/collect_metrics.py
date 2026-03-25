@@ -361,7 +361,7 @@ if __name__ == '__main__':
     parser.add_argument('--results_dir', default='results',
                         help='Results directory with {task}_results.txt, bio_b_tilde.csv, '
                              'and annotation xlsx (default: results)')
-    parser.add_argument('--dist_dir', default='results/patch_intersection_all',
+    parser.add_argument('--dist_dir', default='results/patch_intersection_all_cosine',
                         help='Directory with centroid_distances_all.csv per task '
                              '(default: results/patch_intersection_all)')
     parser.add_argument('--output', default='results/per_class_metrics.csv',
