@@ -1,4 +1,13 @@
 import os
+from pathlib import Path
+
+# Load HF_KEY from .env (KEY=VALUE format)
+_env_file = Path(__file__).resolve().parent.parent.parent.parent / '.env'
+for _line in _env_file.read_text().splitlines():
+    if '=' in _line and not _line.startswith('#'):
+        _k, _v = _line.split('=', 1)
+        os.environ.setdefault(_k.strip(), _v.strip())
+HF_KEY = os.environ['HF_KEY']
 
 best = {
     ('pam50', 'transmil'):    {'z_dim': 472,  'dropout_p': 0.5974},
@@ -98,7 +107,7 @@ benchmark_parameters:
     - Adam
 
 weights_dir: ./pretrained_weights
-hf_key: 
+hf_key: {hf_key}
 """
 
 TEST_TEMPLATE = """\
@@ -193,7 +202,7 @@ benchmark_parameters:
     - Adam
 
 weights_dir: ./pretrained_weights
-hf_key: 
+hf_key: {hf_key}
 """
 
 created = []
@@ -208,6 +217,7 @@ for task in ['pam50', 'er', 'pr', 'erbb2']:
                 z_dim=params['z_dim'],
                 dropout_p=params['dropout_p'],
                 extra_eval=extra_eval,
+                hf_key=HF_KEY,
             )
             fname = 'conf_brca_%s_%s_virchow2_%s.yaml' % (task, mil, mode)
             fpath = os.path.join(config_dir, fname)
