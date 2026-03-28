@@ -234,12 +234,12 @@ def generate_stats_table(data: pd.DataFrame, output: Path) -> None:
         r'\centering',
         (r'\caption{Statistical models predicting relative performance degradation (RPD) '
          r'from domain shift factors. The most parsimonious multivariate model includes '
-         r'only $\Delta n$ and $d_c$ ($n=' + str(n) + r'$ molecular classes). '
-         r'$\tilde{B}_c$ is excluded because it contributes no independent predictive '
-         r'power once $\Delta n$ and $d_c$ are included '
+         r'only $\Delta n$ and $d$ ($n=' + str(n) + r'$ molecular classes). '
+         r'$\tilde{B}$ is excluded because it contributes no independent predictive '
+         r'power once $\Delta n$ and $d$ are included '
          r'($\beta\approx' + fmt(0.013, sign=True) + r'$, $p=0.881$, $\Delta R^2<0.001$), '
          r'and shows moderate collinearity with $\Delta n$ '
-         r'(Spearman $\rho=-0.691$, $p=0.019$) and $d_c$ ($\rho=-0.482$, $p=0.133$), '
+         r'(Spearman $\rho=-0.691$, $p=0.019$) and $d$ ($\rho=-0.482$, $p=0.133$), '
          r'with VIF$=2.31$ in the joint model. '
          r'Multiple-testing correction applied via Benjamini--Hochberg (BH) procedure '
          r'($\alpha=0.05$) separately within each section '
@@ -340,7 +340,7 @@ def _scatter_panel(ax, data: pd.DataFrame, x_col: str, y_col: str,
     q_rho = q_rho if q_rho is not None else p_rho
 
     if show_ci:
-        ax.fill_between(x_line, ci_low, ci_high, alpha=0.15, color='grey')
+        ax.fill_between(x_line, ci_low, ci_high, color='#DEDEDE')  # light grey, EPS-safe
     ax.plot(x_line, y_line, color='black', lw=1.5, zorder=3)
 
     for _, row in sub.iterrows():
@@ -381,8 +381,8 @@ def plot_univariates(data: pd.DataFrame, figures_dir: Path) -> None:
     panels = [
         ('delta_n', r'$\Delta n$ (Macenko gain)',            True),
         ('delta_p', r'$\Delta p$ (prevalence shift)',        False),
-        ('d_c',     r'$d_c$ (cosine centroid distance)',     True),
-        ('b_tilde', r'$\tilde{B}_c$ (morphological separability)', True),
+        ('d_c',     r'$d$ (cosine centroid distance)',     True),
+        ('b_tilde', r'$\tilde{B}$ (morphological separability)', True),
     ]
 
     # BH correction across all 4 univariate tests (OLS and Spearman separately)
@@ -405,7 +405,7 @@ def plot_univariates(data: pd.DataFrame, figures_dir: Path) -> None:
                loc='lower center', ncol=4, fontsize=9,
                bbox_to_anchor=(0.5, -0.01))
 
-    for ext in ('pdf', 'png'):
+    for ext in ('pdf', 'png', 'eps'):
         out = figures_dir / f'univariate_plots.{ext}'
         fig.savefig(out, bbox_inches='tight', dpi=200)
         print(f'Saved → {out}')
@@ -433,19 +433,19 @@ def plot_collinearity(data: pd.DataFrame, figures_dir: Path) -> None:
     fig.subplots_adjust(wspace=0.35, bottom=0.18)
 
     _scatter_panel(ax1, data, 'b_tilde', 'delta_n',
-                   xlabel=r'$\tilde{B}_c$ (morphological separability)',
+                   xlabel=r'$\tilde{B}$ (morphological separability)',
                    ylabel=r'$\Delta n$ (Macenko gain on CPTAC)',
                    show_ci=True, q_ols=ols_qs[0], q_rho=rho_qs[0])
     _scatter_panel(ax2, data, 'b_tilde', 'd_c',
-                   xlabel=r'$\tilde{B}_c$ (morphological separability)',
-                   ylabel=r'$d_c$ (cosine centroid distance)',
+                   xlabel=r'$\tilde{B}$ (morphological separability)',
+                   ylabel=r'$d$ (cosine centroid distance)',
                    show_ci=True, q_ols=ols_qs[1], q_rho=rho_qs[1])
 
     fig.legend(handles=_legend_handles(), title='Task',
                loc='lower center', ncol=4, fontsize=9,
                bbox_to_anchor=(0.5, -0.04))
 
-    for ext in ('pdf', 'png'):
+    for ext in ('pdf', 'png', 'eps'):
         out = figures_dir / f'collinearity_plots.{ext}'
         fig.savefig(out, bbox_inches='tight', dpi=200)
         print(f'Saved → {out}')
