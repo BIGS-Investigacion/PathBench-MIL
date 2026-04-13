@@ -30,7 +30,7 @@ import torch
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Modelos que slideflow implementa de forma nativa (no en aggregators.py)
 _SLIDEFLOW_MIL_FILES = {

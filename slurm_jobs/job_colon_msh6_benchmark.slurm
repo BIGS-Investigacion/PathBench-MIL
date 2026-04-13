@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=col_pms2
+#SBATCH --job-name=col_msh6_bench
 #SBATCH --output=slurm_logs/%j.out
 #SBATCH --error=slurm_logs/%j.err
 #SBATCH --nodelist=gpu02
@@ -13,4 +13,4 @@ source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
 cd /shared/home/jorgarcia/PathBench-MIL
 mkdir -p slurm_logs
 
-./run_pathbench.sh ./config/conf_colon_pms2_optuna.yaml
+./run_pathbench.sh ./config/conf_colon_msh6_benchmark.yaml

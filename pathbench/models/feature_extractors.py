@@ -2775,3 +2775,83 @@ class prism_slide(SlideFeatureExtractor):
             'class': 'pathbench.models.feature_extractors.prism_slide',
             'kwargs': {'tile_px': self.tile_px}
         }
+
+class ConchCaptioner:
+    """
+    Genera captions de texto para patches de patología usando CONCH.
+
+    Uso:
+        captioner = ConchCaptioner()
+        caption = captioner.caption(image)   # image: PIL.Image o torch.Tensor (C,H,W)
+        captions = captioner.caption_batch([img1, img2, ...])
+    """
+
+    def __init__(self, device: str = 'cuda', seq_len: int = 60,
+                 generation_type: str = 'beam_search', top_p: float = 0.1, top_k: int = 1):
+        from conch.open_clip_custom import create_model_from_pretrained, get_tokenizer
+        import torch
+        from torchvision import transforms
+
+        self.device = torch.device(device if torch.cuda.is_available() else 'cpu')
+        self.seq_len = seq_len
+        self.generation_type = generation_type
+        self.top_p = top_p
+        self.top_k = top_k
+
+        self.model, _ = create_model_from_pretrained(
+            'conch_ViT-B-16', 'hf_hub:MahmoodLab/conch'
+        )
+        self.model.to(self.device).eval()
+
+        self.tokenizer = get_tokenizer('conch_ViT-B-16')
+
+        self.transform = transforms.Compose([
+            transforms.Resize(448),
+            transforms.CenterCrop(448),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.485, 0.456, 0.406),
+                                 std=(0.229, 0.224, 0.225)),
+        ])
+
+    @torch.inference_mode()
+    def caption(self, image) -> str:
+        """
+        Genera un caption para una imagen.
+        image: PIL.Image o torch.Tensor (C, H, W) ya normalizado.
+        """
+        import torch
+        from PIL import Image
+
+        if isinstance(image, Image.Image):
+            image = self.transform(image)
+
+        if image.ndim == 3:
+            image = image.unsqueeze(0)
+
+        image = image.to(self.device)
+
+        output = self.model.generate(
+            image,
+            seq_len=self.seq_len,
+            generation_type=self.generation_type,
+            top_p=self.top_p,
+            top_k=self.top_k,
+        )
+        return self.tokenizer.decode(output[0].tolist())
+
+    @torch.inference_mode()
+    def caption_batch(self, images) -> list[str]:
+        """
+        Genera captions para una lista de PIL.Image.
+        """
+        import torch
+        tensors = [self.transform(img) for img in images]
+        batch = torch.stack(tensors).to(self.device)
+        output = self.model.generate(
+            batch,
+            seq_len=self.seq_len,
+            generation_type=self.generation_type,
+            top_p=self.top_p,
+            top_k=self.top_k,
+        )
+        return [self.tokenizer.decode(o.tolist()) for o in output]

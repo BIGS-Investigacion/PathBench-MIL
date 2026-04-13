@@ -17,3 +17,5 @@ build/*
 config/*
 slurm_logs/*
 results/old/*
+results/patches/*
+results/*

@@ -2,8 +2,8 @@
 #SBATCH --job-name=col_mlh1
 #SBATCH --output=slurm_logs/%j.out
 #SBATCH --error=slurm_logs/%j.err
-#SBATCH --nodelist=gpu08
-#SBATCH --gpus=a100:1
+#SBATCH --nodelist=gpu06
+#SBATCH --gpus=a40:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 #SBATCH --time=00:00:00
