@@ -2787,7 +2787,7 @@ class ConchCaptioner:
     """
 
     def __init__(self, device: str = 'cuda', seq_len: int = 60,
-                 generation_type: str = 'beam_search', top_p: float = 0.1, top_k: int = 1):
+                 generation_type: str = 'top_k', top_p: float = 0.1, top_k: int = 1):
         from conch.open_clip_custom import create_model_from_pretrained, get_tokenizer
         import torch
         from torchvision import transforms
@@ -2803,7 +2803,14 @@ class ConchCaptioner:
         )
         self.model.to(self.device).eval()
 
-        self.tokenizer = get_tokenizer('conch_ViT-B-16')
+        self.tokenizer = get_tokenizer()
+
+        # Monkey-patch para evitar device mismatch entre transformers y CUDA
+        import transformers.generation.logits_process as _lp
+        _orig_isin = _lp.isin_mps_friendly
+        def _isin_device_safe(elements, test_elements):
+            return _orig_isin(elements, test_elements.to(elements.device))
+        _lp.isin_mps_friendly = _isin_device_safe
 
         self.transform = transforms.Compose([
             transforms.Resize(448),
@@ -2837,7 +2844,7 @@ class ConchCaptioner:
             top_p=self.top_p,
             top_k=self.top_k,
         )
-        return self.tokenizer.decode(output[0].tolist())
+        return self.tokenizer.decode(output[0].tolist(), skip_special_tokens=True)
 
     @torch.inference_mode()
     def caption_batch(self, images) -> list[str]:
@@ -2854,4 +2861,4 @@ class ConchCaptioner:
             top_p=self.top_p,
             top_k=self.top_k,
         )
-        return [self.tokenizer.decode(o.tolist()) for o in output]
+        return [self.tokenizer.decode(o.tolist(), skip_special_tokens=True) for o in output]

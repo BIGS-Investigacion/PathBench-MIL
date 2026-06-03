@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 import slideflow as sf
 import os
 import torch
-from ..benchmarking.benchmark import benchmark, optimize_parameters, extract_features
+from ..benchmarking.benchmark import benchmark, benchmark_staged, optimize_parameters, extract_features
 import random
 import shutil
 import logging
@@ -18,7 +18,7 @@ def read_config(config_file : str):
 
     Args:
         config_file (str): The path to the configuration file
-    
+
     Returns:
         dict: The configuration dictionary for the experiment
     """
@@ -44,7 +44,7 @@ else:
         # Set device to CPU
         device = torch.device('cpu')
         logging.info('Using CPU')
-        
+
 class Experiment():
     """
     Experiment class, designed to load the data and the configuration of a benchmarking
@@ -54,7 +54,7 @@ class Experiment():
     ----------
     config_file : str
         The path to the configuration file for the experiment
-    
+
     Attributes
     ----------
     config : dict
@@ -63,7 +63,7 @@ class Experiment():
         The slideflow project object
     project_name : str
         The name of the project
-    
+
     Methods
     -------
     run()
@@ -72,7 +72,7 @@ class Experiment():
         Load the datasets into the project
     benchmark()
         Run the benchmarking experiment
-    
+
     """
     def __init__(self, config_file : str):
         self.config = read_config(config_file)
@@ -116,8 +116,11 @@ class Experiment():
         elif self.config['experiment']['mode'] == "feature_extraction":
             logging.info("Running feature extraction mode...")
             self.extract_features()
+        elif self.config['experiment']['mode'] == 'staged':
+            logging.info("Running staged training mode...")
+            self.benchmark_staged()
         else:
-            raise ValueError("Invalid mode. Mode must be either 'benchmark' or 'optimization'")
+            raise ValueError("Invalid mode. Must be 'benchmark', 'optimization', 'feature_extraction', or 'staged'")
 
     def load_datasets(self):
         """
@@ -164,7 +167,7 @@ class Experiment():
             name = source.get('name')
             if not name:
                 raise ValueError(f"Dataset name is missing in the configuration for project '{self.project_name}'.")
-            
+
             def resolve_path(path):
                 if not path:
                     return None
@@ -180,7 +183,7 @@ class Experiment():
                         os.makedirs(os.path.dirname(path), exist_ok=True)
                         logging.debug(f"Path {path} does not exist, creating directories")
                     return path
-            
+
 
             self.project.add_source(
                 name=source['name'],
@@ -190,7 +193,7 @@ class Experiment():
             )
             logging.info(f"Added source '{source['name']}' to project '{self.project_name}'")
 
-        
+
     def benchmark(self):
         #Iterate over all possible combinations of hyperparameters
         benchmark(self.config, self.project)
@@ -202,3 +205,6 @@ class Experiment():
     def extract_features(self):
         #Extract features from the dataset
         extract_features(self.config, self.project)
+
+    def benchmark_staged(self):
+        benchmark_staged(self.config, self.project)

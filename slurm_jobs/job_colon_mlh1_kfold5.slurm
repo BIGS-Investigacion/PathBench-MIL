@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH --job-name=col_mlh1_kf5
+#SBATCH --output=slurm_logs/%j.out
+#SBATCH --error=slurm_logs/%j.err
+#SBATCH --nodelist=gpu02
+#SBATCH --gpus=a30:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64G
+#SBATCH --time=00:00:00
+
+source /etc/profile
+source /shared/home/PARADIS/PathBench-MIL/pathbench_env/bin/activate
+cd /shared/home/jorgarcia/PathBench-MIL
+mkdir -p slurm_logs
+
+./run_pathbench.sh ./config/conf_colon_mlh1_kfold5.yaml

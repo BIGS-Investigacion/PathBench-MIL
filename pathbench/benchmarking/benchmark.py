@@ -12,6 +12,8 @@ Authors:
 """
 import importlib
 import os
+import copy
+import glob
 import datetime
 import sys
 import gc
@@ -721,6 +723,9 @@ def plot_benchmarking_output(config: dict, val_df: pd.DataFrame, test_df: pd.Dat
         plt.close()
 
     # --- Test Plots ---
+    if test_df.empty or 'test_dataset' not in test_df.columns:
+        return
+
     test_df_proc = test_df.copy()
     test_df_proc['combination'] = make_labels(test_df_proc)
 
@@ -990,13 +995,13 @@ def generate_bags(config: dict, project: sf.Project, all_data: sf.Dataset,
         logging.info("Running on a SLURM server environment, removing torch/huggingface cache to avoid full cache errors.")
         remove_cache()
 
-    if combination_dict['normalization'].lower() == "none":
-        combination_dict['normalization'] = None
+    # Translate the string sentinel 'none' to Python None for slideflow, without mutating combination_dict
+    normalizer = None if combination_dict['normalization'].lower() == "none" else combination_dict['normalization']
 
     #If some bags are missing, recalculate them
     if "mixed_precision" in config['experiment']:
         bags = project.generate_feature_bags(model=feature_extractor, dataset=all_data,
-                                            normalizer=combination_dict['normalization'],
+                                            normalizer=normalizer,
                                             outdir=bags_dir,
                                             mixed_precision=config['experiment']['mixed_precision'],
                                             num_gpus=num_gpus,
@@ -1006,7 +1011,7 @@ def generate_bags(config: dict, project: sf.Project, all_data: sf.Dataset,
         )
     else:
         bags = project.generate_feature_bags(model=feature_extractor, dataset=all_data,
-                                            normalizer=combination_dict['normalization'],
+                                            normalizer=normalizer,
                                             outdir=bags_dir,
                                             num_gpus=num_gpus,
                                             force_regenerate=not config['experiment']['skip_feature_extraction'] if 'skip_feature_extraction' in config['experiment'] else False,
@@ -1215,8 +1220,9 @@ def build_aggregated_results(val_df: pd.DataFrame, test_df: pd.DataFrame, config
     """
 
     #Group by benchmark parameters and 'test_dataset' column in the test dataset
-    val_df_grouped = val_df.groupby(list(benchmark_parameters.keys()))
-    test_df_grouped = test_df.groupby(list(benchmark_parameters.keys()) + ['test_dataset']) if 'test_dataset' in test_df.columns else list(benchmark_parameters.keys())
+    # dropna=False ensures rows where a parameter is None (e.g. normalization='none') are not silently dropped
+    val_df_grouped = val_df.groupby(list(benchmark_parameters.keys()), dropna=False)
+    test_df_grouped = test_df.groupby(list(benchmark_parameters.keys()) + ['test_dataset'], dropna=False) if 'test_dataset' in test_df.columns else test_df.groupby(list(benchmark_parameters.keys()), dropna=False)
 
     val_df_agg = val_df_grouped.agg(aggregation_functions)
     test_df_agg = test_df_grouped.agg(aggregation_functions)
@@ -1441,6 +1447,173 @@ def run_best_model(config: dict, split: int, dataset: sf.Dataset, bags: str,
         norm="linear"
     )
     logging.info(f"Best model evaluation completed. Results saved in {eval_outdir}.")
+
+
+def benchmark_staged(config: dict, project: sf.Project):
+    """
+    Staged training: each stage draws a fresh random 10% val split (with repetitions allowed).
+    Each stage warm-starts from the best checkpoint of the previous stage.
+    Saves the final checkpoint path to staged_final_checkpoint.txt for downstream use (e.g. LODO).
+
+    Config fields (under experiment):
+        n_stages     (int): number of training stages (default 10)
+        val_fraction (float): fraction used as validation each stage (default 0.1)
+        epochs       (int): epochs per stage
+        seed         (int): base random seed; each stage uses seed + stage index
+        (no early_stopping block — omit it from config)
+    """
+    logging.info("Starting staged training...")
+    task = config['experiment'].get('task', 'classification')
+    n_stages = config['experiment'].get('n_stages', 10)
+    val_fraction = config['experiment'].get('val_fraction', 0.1)
+    base_seed = config['experiment'].get('seed', 42)
+    project_directory = f"experiments/{config['experiment']['project_name']}"
+
+    target = determine_target_variable(task, config)
+    annotation_df = pd.read_csv(config['experiment']['annotation_file'])
+    dataset_mapping = dict(zip(annotation_df['patient'], annotation_df['dataset']))
+
+    staged_config = copy.deepcopy(config)
+    staged_config['experiment']['split_technique'] = 'fixed'
+    staged_config['experiment']['val_fraction'] = val_fraction
+
+    combination_dict = {key: vals[0] for key, vals in config['benchmark_parameters'].items()}
+
+    all_data = project.dataset(
+        tile_px=combination_dict['tile_px'],
+        tile_um=combination_dict['tile_um'],
+    )
+
+    train_set, _ = split_train_test(staged_config, all_data, task)
+
+    save_string, string_without_mil = get_save_strings(combination_dict)
+    feature_extractor = build_feature_extractor(
+        combination_dict['feature_extraction'].lower(),
+        tile_px=combination_dict['tile_px'],
+    )
+    bags = generate_bags(staged_config, project, all_data, combination_dict,
+                         string_without_mil, feature_extractor)
+
+    slide_level = "slide" in combination_dict['feature_extraction'].lower()
+    mil_conf, combination_dict = set_mil_config(staged_config, combination_dict, task, slide_level)
+
+    os.makedirs(f"{project_directory}/results", exist_ok=True)
+
+    _, test_datasets = configure_datasets(config)
+    model_string = get_model_string(combination_dict, combination_dict['feature_extraction'], config=config)
+
+    prev_ckpt = None
+    for stage in range(n_stages):
+        # Fresh random split each stage using a different seed
+        stage_seed = base_seed + stage
+        random.seed(stage_seed)
+        np.random.seed(stage_seed)
+        splits_file = f"{project_directory}/staged_split_stage{stage + 1:02d}_{task}.json"
+        splits = split_datasets(staged_config, project, splits_file, target,
+                                project_directory, train_set, dataset_mapping)
+        train, val = list(splits)[0]
+        train = balance_dataset(train, task, staged_config)
+        val = balance_dataset(val, task, staged_config)
+
+        logging.info(f"Staged training — stage {stage + 1}/{n_stages} (seed {stage_seed})")
+
+        if prev_ckpt:
+            staged_config['experiment']['pretrained_weights'] = prev_ckpt
+            logging.info(f"  Warm-starting from: {prev_ckpt}")
+        else:
+            staged_config['experiment'].pop('pretrained_weights', None)
+
+        model_kwargs = {
+            'pb_config': staged_config,
+            'loss': combination_dict.get('loss', get_default_loss(task)),
+        }
+
+        exp_label = f"{save_string}_stage{stage + 1:02d}"
+
+        project.train_mil(
+            config=mil_conf,
+            outcomes=target,
+            train_dataset=train,
+            val_dataset=val,
+            bags=bags,
+            exp_label=exp_label,
+            **model_kwargs,
+        )
+
+        mil_directory = f"{project_directory}/mil"
+        number = get_mil_directory_number(mil_directory, exp_label)
+        stage_dir = f"{mil_directory}/{number}-{exp_label}"
+
+        ckpts = glob.glob(f"{stage_dir}/checkpoints/**/*.ckpt", recursive=True)
+        if not ckpts:
+            logging.warning(f"  No checkpoint found in {stage_dir}, next stage starts from scratch.")
+            prev_ckpt = None
+        else:
+            prev_ckpt = ckpts[0]
+            logging.info(f"  Checkpoint: {prev_ckpt}")
+
+    if prev_ckpt:
+        ref_path = f"{project_directory}/staged_final_checkpoint.txt"
+        with open(ref_path, 'w') as f:
+            f.write(prev_ckpt)
+        logging.info(f"Staged training complete. Final checkpoint: {prev_ckpt}")
+        logging.info(f"Path saved to: {ref_path}")
+    else:
+        logging.warning("Staged training complete but no final checkpoint found.")
+        return
+
+    # Hold-out evaluation: ensemble of all stage checkpoints on test datasets
+    if test_datasets:
+        logging.info("Running ensemble hold-out evaluation on test datasets...")
+
+        mil_directory = f"{project_directory}/mil"
+        stage_weights_dirs = []
+        for stage in range(n_stages):
+            exp_label = f"{save_string}_stage{stage + 1:02d}"
+            number = get_mil_directory_number(mil_directory, exp_label)
+            stage_dir = f"{mil_directory}/{number}-{exp_label}"
+            if os.path.isdir(stage_dir):
+                stage_weights_dirs.append(stage_dir)
+
+        for test_dataset in test_datasets:
+            individual_test_set = all_data.filter(filters={'dataset': [test_dataset['name']]})
+            stage_preds = []
+
+            for i, weights_dir in enumerate(stage_weights_dirs):
+                stage_outdir = f"{project_directory}/staged_eval_{test_dataset['name']}_stage{i + 1:02d}"
+                logging.info(f"  Stage {i + 1} inference on {test_dataset['name']}")
+                eval_mil(
+                    weights=weights_dir,
+                    outcomes=target,
+                    dataset=individual_test_set,
+                    bags=bags,
+                    config=mil_conf,
+                    outdir=stage_outdir,
+                    pb_config=staged_config,
+                    loss=combination_dict.get('loss', get_default_loss(task)),
+                )
+                preds_path = f"{stage_outdir}/00000-{model_string}/predictions.parquet"
+                if os.path.exists(preds_path):
+                    stage_preds.append(pd.read_parquet(preds_path))
+
+            if not stage_preds:
+                logging.warning(f"  No predictions collected for {test_dataset['name']}, skipping.")
+                continue
+
+            y_pred_cols = [c for c in stage_preds[0].columns if 'y_pred' in c]
+            ensemble = stage_preds[0].copy()
+            for col in y_pred_cols:
+                ensemble[col] = np.mean([df[col].values for df in stage_preds], axis=0)
+
+            ensemble_dir = f"{project_directory}/staged_eval_{test_dataset['name']}_ensemble"
+            os.makedirs(ensemble_dir, exist_ok=True)
+            ensemble.to_parquet(f"{ensemble_dir}/predictions.parquet", index=False)
+            ensemble.to_csv(f"{ensemble_dir}/predictions.csv", index=False)
+
+            test_metrics, _, _, _ = calculate_results(ensemble, staged_config, f"staged_ensemble_{test_dataset['name']}", "test")
+            logging.info(f"  {test_dataset['name']} ensemble — {test_metrics}")
+    else:
+        logging.info("No test datasets configured — skipping hold-out evaluation.")
 
 
 def calculate_results(result: pd.DataFrame, config: dict, save_string: str, dataset_type: str):
