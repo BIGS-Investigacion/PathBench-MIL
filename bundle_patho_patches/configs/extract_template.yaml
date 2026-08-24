@@ -1,0 +1,67 @@
+# ============================================================================
+# Plantilla de configuración para la EXTRACCIÓN DE FEATURES con h-optimus-0
+# (Slideflow / PathBench, modo feature_extraction).
+#
+# NO editar a mano: el script 01_extract_features.sh sustituye los marcadores
+#   @WSI_DIR@      -> carpeta con las WSIs de entrada
+#   @TFREC_DIR@    -> carpeta de trabajo para tiles/tfrecords
+#   @BAGS_DIR@     -> carpeta raíz donde se guardan los bags (.pt + .index.npz)
+#   @ANNOT@        -> CSV con la lista de slides (generado por 00_make_annotation.py)
+#   @HF_KEY@       -> token de HuggingFace para descargar los pesos de h-optimus-0
+#
+# Parámetros FIJOS (deben coincidir con los usados en el estudio original):
+#   - tile_px 256, tile_um 128  ->  0.5 µm/px (20x)
+#   - normalización: none
+#   - QC: GaussianV2 + Otsu-CLAHE con los mismos umbrales
+#   - extractor: h_optimus_0 (1536 dims por patch)
+# ============================================================================
+experiment:
+  project_name: patho_bundle_extract
+  seed: 42
+  annotation_file: "@ANNOT@"
+  bags_path: "@BAGS_DIR@"
+  mode: feature_extraction
+  skip_extracted: False          # False -> teselar de verdad
+  skip_feature_extraction: False # False -> extraer features de verdad
+  batch_size: 512
+  num_workers: 8
+  multiprocessing_context: fork
+  persistent_workers: True
+  pin_memory: True
+  mixed_precision: True
+  qc:
+    - GaussianV2
+    - Otsu-CLAHE
+  qc_filters:
+    grayspace_threshold: 0.05
+    grayspace_fraction: 0.6
+    whitespace_threshold: 230
+    whitespace_fraction: 1.0
+
+datasets:
+  - name: input
+    slide_path: "@WSI_DIR@"
+    tfrecord_path: "@TFREC_DIR@/256px_20x"
+    tile_path: "@TFREC_DIR@/256px_20x/tiles"
+    used_for: training
+
+benchmark_parameters:
+  tile_px:
+    - 256
+  tile_um:
+    - 128
+  normalization:
+    - none
+  feature_extraction:
+    - h_optimus_0
+  mil:
+    - dsmil
+  loss:
+    - CrossEntropyLoss
+  activation_function:
+    - ReLU
+  optimizer:
+    - Adam
+
+weights_dir: ./pretrained_weights
+hf_key: "@HF_KEY@"

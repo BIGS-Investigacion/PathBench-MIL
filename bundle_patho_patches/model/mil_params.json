@@ -1,0 +1,42 @@
+{
+ "trainer": "lightning",
+ "params": {
+  "aggregation_level": "patient",
+  "lr": null,
+  "wd": 1e-05,
+  "bag_size": 128,
+  "fit_one_cycle": true,
+  "epochs": 50,
+  "batch_size": 32,
+  "drop_last": true,
+  "save_monitor": "val_loss",
+  "z_dim": 270,
+  "encoder_layers": 1,
+  "activation_function": "ReLU",
+  "dropout_p": 0.3966,
+  "task": "classification",
+  "slide_level": false,
+  "model": "dsmil",
+  "apply_softmax": true,
+  "model_kwargs": null,
+  "use_lens": false
+ },
+ "outcomes": "category",
+ "outcome_labels": {
+  "0": "0",
+  "1": "1"
+ },
+ "bags": "/home/PARADIS/colon/tfrecords/shared_bags/256_128_none_h_optimus_0",
+ "input_shape": 1536,
+ "output_shape": 2,
+ "bags_extractor": {
+  "extractor": {
+   "class": "h_optimus_0",
+   "kwargs": {}
+  },
+  "normalizer": null,
+  "num_features": 1536,
+  "tile_px": 256,
+  "tile_um": 128
+ }
+}

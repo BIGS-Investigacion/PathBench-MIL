@@ -26,7 +26,7 @@ from sklearn.metrics import balanced_accuracy_score
 warnings.filterwarnings('ignore')
 
 ROOT      = Path(__file__).resolve().parents[2]
-BAGS_DIR  = Path('/home/PARADIS/colon/tfrecords/shared_bags/256_128_none_h_optimus_0')
+BAGS_DIR  = Path('/home/PARADIS/datos/features/shared_bags/256_128_none_h_optimus_0')
 MODEL_DIR = ROOT / 'experiments/colon_mss_msi_benchmark/mil/00000-256_128_none_h_optimus_0_dsmil_CrossEntropyLoss_ReLU_Adam_1'
 ANNOT_DIR = ROOT / 'config/annotations'
 
